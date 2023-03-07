@@ -1,0 +1,5 @@
+#!/bin/env bash
+
+   current_value=$(herbstclient get frame_gap)
+   new_value=$(("${current_value}" + $1))
+   [[ "${new_value}" -ge 0 ]] && herbstclient set frame_gap $new_value

@@ -1,0 +1,159 @@
+_bind $Hyper-Shift-s \
+substitute KEEP clients.focus.winid \
+substitute DAD clients.focus.parent_frame.index \
+substitute FOCUS tags.focus.name \
+foreach CLIENT clients. \
+    sprintf DADATT "%c.parent_frame.index" CLIENT \
+    sprintf KEEPATT "%c.winid" CLIENT \
+    sprintf TAGATT "%c.tag" CLIENT and \
+      , compare TAGATT "=" FOCUS \
+      , compare KEEPATT "!=" KEEP \
+      , compare DADATT "=" DAD \
+      , substitute XWIN KEEPATT close XWIN
+
+
+hc substitute TAG tags.focus.name \
+	   substitute FRAME clients.focus.parent_frame.index \
+	   foreach CLIENT clients. \
+	      sprintf TAG_ATTR "%c.tag" CLIENT \
+	      sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
+	      sprintf WINID_ATTR "%c.winid" CLIENT and \
+	      , compare TAG_ATTR "=" TAG \
+	      , compare FRAME_ATTR "!=" FRAME \
+	      , chain . lock . echo jumpto WINID_ATTR . close_and_remove . unlock
+
+
+ hc	substitute FRAME tags.focus.focused_client.parent_frame.index \
+	substitute TAG tags.focus.name \
+	foreach F tags. \
+	    sprintf ATTR_tag_name "%c.name" F \
+	    sprintf ATTR_curframe_wcount "%c.curframe_wcount" F \
+	    and , compare ATTR_curframe_wcount = 0 \
+
+	    , remove
+
+
+rule class=Thunderbird index=/0
+Insert all Thunderbird instances in the tree that has no focus and there in the first child.
+
+FRAME INDEX
+The exact position of a frame in the layout tree may be described by its index which is just a string of characters. The lookup algorithm starts at the root frame and interprets the index string character by character as follows:
+
+    0: select the first subtree
+    1: select the second subtree
+    .: select the subtree having the focus
+    /: select the subtree not having the focus
+    @: select the frame having the focus. In contrast to ., this passes multiple layers all down to the focused leaf of the frame tree.
+    p: select the parent tree
+    e: finds a suitable empty frame: if the focused frame is not empty, this selects the closest frame that is empty (in any subtree)
+
+For example:
+    An empty string refers to the root frame
+    00 refers to the first subtree of the first subtree of the root frame.
+    1e refers to the first empty frame in the second subtree.
+    /@ refers to the focused frame within the unfocused "half" of the frame tree
+    @p/ refers to the sibling of the focused frame
+
+
+RULES
+	hc try new_attr bool tags.focus.focused_client.parent_frame.my_last_frame_standing
+	hc set_attr tags.focus.focused_client.parent_frame.my_last_frame_standing true
+	rule
+
+
+
+ hc substitute TAG tags.focus.name \
+	    substitute FRAME clients.focus.parent_frame.index \
+	    foreach CLIENT clients. \
+	    sprintf TAG_ATTR "%c.tag" CLIENT \
+	    sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
+	    sprintf WINID_ATTR "%c.winid" CLIENT and \
+	    , compare TAG_ATTR "=" TAG \
+	    , compare FRAME_ATTR "!=" FRAME \
+	    , try substitute XWINS WINID_ATTR \
+		  chain . lock . jumpto XWINS . close_and_remove . unlock \
+	    foreach F tags.focus.tiling.root --recursive \
+	    sprintf CLIENT_COUNT_ATTR '%c.client_count' F \
+	    and ,, silent compare CLIENT_COUNT_ATTR = 0 \
+		,, remove
+
+
+hc chain  . try silent substitute TAG tags.focus.name \
+		substitute FRAME clients.focus.parent_frame.index \
+		foreach CLIENT clients. \
+		sprintf TAG_ATTR "%c.tag" CLIENT \
+		sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
+		sprintf WINID_ATTR "%c.winid" CLIENT and \
+		, compare TAG_ATTR "=" TAG \
+		, compare FRAME_ATTR "!=" FRAME \
+		, substitute XWINS WINID_ATTR close XWINS \
+	  . foreach F tags.focus.tiling.root --recursive \
+		sprintf CLIENT_COUNT_ATTR '%c.client_count' F \
+		and ,, silent compare CLIENT_COUNT_ATTR = 0 \
+		    ,, remove
+
+
+chain \
+    . lock \
+    . try silent substitute TAG tags.focus.name \
+      substitute FRAME clients.focus.parent_frame.index \
+      foreach CLIENT clients. \
+      sprintf TAG_ATTR "%c.tag" CLIENT \
+      sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
+      sprintf WINID_ATTR "%c.winid" CLIENT and \
+	 , compare TAG_ATTR "=" TAG \
+	 , compare FRAME_ATTR "!=" FRAME \
+	 , substitute XWINS WINID_ATTR close XWINS \
+    . foreach F tags.focus.tiling.root --recursive remove \
+    . unlock
+
+
+
+
+!!!!OK
+ hc \
+	    substitute KEEP clients.focus.winid \
+	    substitute DAD clients.focus.parent_frame.index \
+	    substitute FOCUS tags.focus.name \
+	    foreach CLIENT clients. \
+		sprintf DADATT "%c.parent_frame.index" CLIENT \
+		sprintf KEEPATT "%c.winid" CLIENT \
+		sprintf TAGATT "%c.tag" CLIENT and \
+		  , compare TAGATT "=" FOCUS \
+		  , compare DADATT "!=" DAD \
+		  , echo chain ,, substitute XWIN KEEPATT jumpto XWIN ,, close_and_remove
+
+
+
+
+
+
+
+# on $Mod-i do the first thing that succeeds:
+hc keybind $Mod-i or \
+    : substitute WINID clients.focus.winid and \
+	. jumpto urgent \
+	. try new_attr string clients.my_oldfocus \
+	. set_attr clients.my_oldfocus WINID \
+    : jumpto urgent \
+    : substitute WINID clients.my_oldfocus and \
+	. jumpto WINID \
+	. remove_attr clients.my_oldfocus \
+	. spawn notify-send -t 1000 -i edit-undo HLWM 'Jump to previously focused window' \
+    : spawn notify-send -t 1000 -i messagebox_warning HLWM 'No urgent or formerly focused window'
+
+hc keybind $Mod-Escape use_previous
+
+
+hc keybind $Mod-c substitute FS clients.focus.fullscreen \
+	chain , set_attr clients.focus.fullscreen off \
+	      , cycle \
+	      , set_attr clients.focus.fullscreen FS
+hc keybind $Mod-Tab substitute FS clients.focus.fullscreen \
+	chain , set_attr clients.focus.fullscreen off \
+	      , cycle_all 1 \
+	      , set_attr clients.focus.fullscreen FS
+hc keybind $Mod-Shift-Tab substitute FS clients.focus.fullscreen \
+	chain , set_attr clients.focus.fullscreen off \
+	      , cycle_all -1 \
+	      , set_attr clients.focus.fullscreen FS

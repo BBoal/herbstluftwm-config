@@ -1,0 +1,55 @@
+#!/bin/env bash
+
+### on the focused tag close everything else
+hc try silent substitute TAG tags.focus.name \
+	  foreach T tags.by-name. \
+	  sprintf TAG_ATTR "%c.name" T and \
+	  , compare TAG_ATTR "!=" TAG \
+	  , sprintf ELEM "tags.by-name.%{TAG_ATTR}"
+	  , foreach FT
+
+
+	  # Progressos. remove nas outras tags
+ hc try silent substitute TAG tags.focus.name \
+	  foreach T tags.by-name. \
+	  sprintf TAG_ATTR "%c.name" T and \
+	  , compare TAG_ATTR "!=" TAG \
+	  , substitute SEL_TAG TAG_ATTR and \
+	      ,, use SEL_TAG \
+	      ,, foreach F tags.focus.tiling.root --recursive remove \
+	      ,, use TAG
+
+ #  -------------- 2ª tentativa
+
+ hc substitute TAG tags.focus.name and \
+	. foreach T tags.by-name. \
+	  sprintf TAG_ATTR "%c.name" T and \
+	    , compare TAG_ATTR "!=" TAG \
+	    , substitute SEL_TAG TAG_ATTR and \
+		,, use SEL_TAG \
+		,, foreach F tags.focus.tiling.root --recursive remove \
+	. foreach C clients. \
+	  sprintf CTAG_ATTR "%c.tag" C \
+	  sprintf WINID_ATTR "%c.winid" C and \
+	  ,, compare CTAG_ATTR "!=" TAG \
+	  ,, substitute XWIN WINID_ATTR close XWIN \
+	.  use TAG
+
+
+
+
+
+
+
+#----------------
+hc chain \
+	    . lock \
+	    . try silent substitute TAG tags.focus.name \
+	      foreach CLIENT clients. \
+	      sprintf TAG_ATTR "%c.tag" CLIENT \
+	      sprintf WINID_ATTR "%c.winid" CLIENT and \
+	      , compare TAG_ATTR "!=" TAG \
+	      ,
+	 , substitute XWINS WINID_ATTR close XWINS \
+	    . foreach F tags.focus.tiling.root --recursive remove \
+	    . unlock

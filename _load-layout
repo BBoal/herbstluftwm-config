@@ -1,0 +1,3 @@
+#!/bin/env bash
+LAYOUT=$(ls ~/.config/herbstluftwm/layouts/ | dmenu -p "Choose a layout: " -i -l 11)
+herbstclient load "$(cat ~/.config/herbstluftwm/layouts/$LAYOUT)"

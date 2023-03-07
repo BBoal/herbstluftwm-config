@@ -1,0 +1,57 @@
+"$1" and , cycle_value "$2"  $3 , sprintf BODY "$4" "$2" spawn notify-send BODY
+
+Super + button{1,2,3}
+    herbstclient {move,zoom,resize}
+
+Hyper + Alt + {q,l,r}
+    herbstclient {spawn xterm -e "sudo /sbin/shutdown now",quit,reload}
+
+Super + {Return,Delete,q}
+    herbstclient spawn {"${TERMINAL:-xterm}",xterm -e "$HOME/scripts/tm"}
+
+Hyper + {Return, Scroll_Lock}
+    herbstclient spawn {rofi -show window -modi window -show-icons, \
+			slock}
+
+Hyper + Super + {w,e,m,r}
+    herbstclient spawn {firefox,emacs,thunar,dmenu_run_hlwm_v2}
+
+Super + {h,j,k,l}
+    herbstclient focus {left,down,up,right}  --level=all
+
+Super + {Left,Down,Up,Right}
+    herbstclient focus_edge {left,down,up,right}
+
+Hyper + {_,Shift + } {h,j,k,l}
+    herbstclient {focus -i,shift} {left,down,up,right}
+
+Super + {y,u,i,o}
+    herbstclient focus_monitor -{l,d,u,r}
+
+Super + {_,Shift + } {Tab,b,v,c}
+    herbstclient {cycle_all,cycle,cycle_frame,cycle_monitor} {+,-}1
+
+Super + {period,comma}
+    herbstclient use_index {+,-}1 --skip-visible
+
+Hyper + {_,Shift + } {Left,Down,Up,Right}
+    herbstclient {resize,shift_edge} {left,down,up,right} {+0.01,_}
+
+Hyper + Ctrl + r
+    herbstclient rotate
+Hyper + Ctrl + {backslash,plus,minus}
+    herbstclient mirror {vertical,both,horizontal}
+
+Hyper + Ctrl + {h,j,k,l}
+    herbstclient chain , split {left,bottom,top,right} 0.5 , focus {left,down,up,right}
+
+Hyper + Ctrl + space
+    herbstclient split explode
+Hyper + Ctrl + ccedilla
+    herbstclient cycle_value tags.focus.tiling.root.fraction 0.5 0.6666 0.3333
+
+Hyper + {f,z,p}
+	herbstclient {floating,fullscreen,pseudotile} toggle
+
+Hyper + Shift + {f,d,n}
+	herbstclient set_attr clients.focus.{floating,decorated,minimized} {toggle,toggle,true}

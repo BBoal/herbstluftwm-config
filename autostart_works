@@ -1,0 +1,279 @@
+#!/usr/bin/env bash
+
+hc_dir="$HOME/.config/herbstluftwm"
+hc() { herbstclient "$@";}
+hc emit_hook reload
+
+# Multi monitor setup {{{1
+#hc set_monitors 1920x1080+0+0 inverted 1200x1920+1920+240 left 1920x1080+0+1080
+xrandr --output DP-1 --off \
+       --output HDMI-1 --mode 1920x1080 --pos 0x0 --rotate inverted \
+       --output DP-2 --off \
+       --output HDMI-2 --off \
+       --output DP-3 --off \
+       --output DP-2-8 --mode 1920x1200 --pos 1920x240 --rotate left \
+       --output DP-2-1 --primary --mode 1920x1080 --pos 0x1080 --rotate normal &
+# }}}1
+
+
+# Wallpapers {{{1
+# wallpapers="$HOME"/.config/wallpapers
+# xwallpaper --output DP-2-1 --center "$wallpapers"/wallhaven-767m53.jpg \
+#            --output HDMI-1 --center "$wallpapers"/wallhaven-j3ov5w_1920x1080.png \
+#	   --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+# }}}1
+
+# Panel {{{1
+# panel=~/.config/herbstluftwm/panel.sh
+# [ -x "$panel" ] || panel=/etc/xdg/herbstluftwm/panel.sh
+# for monitor in $(hc list_monitors | cut -d: -f1) ; do
+#     # start it on each monitor
+#     "$panel" "$monitor" &
+# done
+
+# }}}1
+
+# Keybindings {{{1
+# remove all existing keybindings
+hc keyunbind --all
+
+# Modkeys definition {{{2
+Alt=Mod1
+Super=Mod4
+Hyper=Mod3
+# }}}2
+
+hc keybind $Hyper-$Alt-q quit
+hc keybind $Hyper-$Alt-r reload
+hc keybind $Hyper-q close
+
+# launching programs
+hc keybind $Super-Return spawn "${TERMINAL:-xterm}"
+hc keybind $Hyper-w spawn firefox
+hc keybind $Hyper-e spawn emacs
+hc keybind $Hyper-m spawn thunar
+hc keybind $Hyper-Delete spawn xterm -e "$HOME/scripts/tm"
+hc keybind $Hyper-r spawn "$hc_dir/dmenu_run_hlwm_v2"
+hc keybind $Hyper-Return spawn rofi -show window -modi window -show-icons
+
+# splitting frames
+# create an empty frame at the specified direction
+hc keybind $Hyper-u chain , split bottom  0.5 , focus down 
+hc keybind $Hyper-o chain , split right   0.5 , focus right
+# let the current frame explode into subframes
+hc keybind $Hyper-Control-space split explode
+
+# basic movement in tiling and floating mode
+# focusing clients
+hc keybind $Hyper-h    focus left
+hc keybind $Hyper-j    focus down
+hc keybind $Hyper-k    focus up
+hc keybind $Hyper-l    focus right
+
+# moving clients in tiling and floating mode
+hc keybind $Hyper-Control-h  or / shift left  / \
+   chain , lock , shift_to_monitor -l , focus_monitor -l , unlock
+hc keybind $Hyper-Control-j  or / shift down  / \
+   chain , lock , shift_to_monitor -d , focus_monitor -d , unlock
+hc keybind $Hyper-Control-k  or / shift up    / \
+   chain , lock , shift_to_monitor -u , focus_monitor -u , unlock
+hc keybind $Hyper-Control-l  or / shift right / \
+   chain , lock , shift_to_monitor -r , focus_monitor -r , unlock
+
+# resizing frames and floating clients
+resizestep=0.01
+hc keybind $Hyper-Left     resize left +$resizestep
+hc keybind $Hyper-Down     resize down +$resizestep
+hc keybind $Hyper-Up       resize up +$resizestep
+hc keybind $Hyper-Right    resize right +$resizestep
+
+# tags
+tag_names=( {1..9} )
+tag_keys=( {1..9} 0 )
+
+hc rename default "${tag_names[0]}" || true
+for i in "${!tag_names[@]}" ; do
+   hc add "${tag_names[$i]}"
+   key="${tag_keys[$i]}"
+   if [ -n "$key" ] ; then
+       hc keybind "$Hyper-$key" use_index "$i"
+       hc keybind "$Hyper-Shift-$key" move_index "$i"
+   fi
+done
+
+# cycle through tags
+hc keybind $Hyper-period use_index +1 --skip-visible
+hc keybind $Hyper-comma  use_index -1 --skip-visible
+
+# layouting
+hc keybind $Hyper-x remove
+hc keybind $Hyper-f floating toggle
+hc keybind $Hyper-z fullscreen toggle
+hc keybind $Hyper-Shift-f set_attr clients.focus.floating toggle
+hc keybind $Hyper-Shift-d set_attr clients.focus.decorated toggle
+hc keybind $Hyper-Shift-n set_attr clients.focus.minimized true
+hc keybind $Hyper-Shift-m jumpto last-minimized
+# Snippet to maximize all minimized windows
+hc keybind $Hyper-Shift-u \
+   substitute FOCUS "tags.focus.name" \
+   foreach CLIENT clients. \
+      sprintf MINATT "%c.minimized" CLIENT \
+      sprintf TAGATT "%c.tag" CLIENT and \
+	, compare MINATT "=" "true" \
+	, compare TAGATT "=" FOCUS \
+	, set_attr MINATT false
+hc keybind $Hyper-p pseudotile toggle
+# The following cycles through the available layouts within a frame, but skips
+# layouts, if the layout change wouldn't affect the actual window positions.
+# I.e. if there are two windows within a frame, the grid layout is skipped.
+hc keybind $Hyper-space \
+   or , and . compare tags.focus.curframe_wcount = 2 \
+	    . cycle_layout +1 vertical horizontal max grid \
+      , cycle_layout +1
+
+# mouse {{{2
+hc mouseunbind --all
+hc mousebind $Super-Button1 move
+hc mousebind $Super-Button2 zoom
+hc mousebind $Super-Button3 resize
+# }}}2
+
+# focus
+hc keybind $Hyper-BackSpace cycle
+hc keybind $Hyper-Tab	    cycle_all +1
+hc keybind $Hyper-Shift-Tab cycle_all -1
+hc keybind $Hyper-c	    cycle_monitor
+hc keybind $Hyper-i         jumpto urgent
+
+# gap space
+hc keybind $Hyper-g	  spawn "${hc_dir}"/_resize_gap +1
+hc keybind $Hyper-Shift-g spawn "${hc_dir}"/_resize_gap -1
+
+#}}}1
+
+# Theme settings {{{1
+hc attr theme.tiling.reset 1
+hc attr theme.floating.reset 1
+hc set frame_border_width 2
+hc set show_frame_decorations 'focused_if_multiple'
+hc set always_show_frame on
+hc set frame_bg_transparent off
+hc set frame_transparent_width 4
+hc set frame_padding 0
+hc set frame_gap 0
+hc set window_gap 1
+hc set smart_window_surroundings off
+hc set smart_frame_surroundings off
+hc set mouse_recenter_gap 0
+hc set focus_follows_mouse 0
+
+hc attr theme.title_when never # when `never`, the `theme.title` can be commented
+# hc attr theme.title_height 15
+hc attr theme.title_font 'SudoVarNerdFontPSPLWEAM Nerd Font Mono:size=13'  # example using Xft
+# hc attr theme.title_depth 3  # space below the title's baseline
+
+# TODO
+hc attr theme.border_width 2 # must have diff >=1 from inner_width
+hc attr theme.inner_width 1  # check previous note
+hc attr theme.inner_color black # should match background color
+
+#floating windows
+hc attr theme.floating.border_width 2
+hc attr theme.floating.outer_width 1
+
+## }}}1
+
+# Colors {{{1
+# title
+# hc attr theme.title_color '#ffffff'
+# hc attr theme.normal.title_color '#898989'
+
+# frame
+hc set frame_border_active_color '#84a0c6'
+hc set frame_border_normal_color '#33374c'
+hc set frame_bg_normal_color '#000000'
+hc set frame_bg_active_color '#00002e'
+
+# active, normal, urgent
+hc attr theme.active.color '#598030'
+hc attr theme.active.inner_color '#00000000'
+hc attr theme.normal.color '#444b71'
+hc attr theme.normal.inner_color '#00000000'
+hc attr theme.urgent.color '#e27878'
+hc attr theme.urgent.inner_color '#c57339'
+# copy inner color to outer_color
+for state in active urgent normal ; do
+   hc substitute C theme.${state}.inner_color \
+	      attr theme.${state}.outer_color C
+done
+hc attr theme.floating.outer_color '#7759b4'
+
+# tab
+# hc attr theme.tab_color '#3f83a6'
+# hc attr theme.active.tab_color '#2d539e'
+# hc attr theme.active.tab_outer_color '#84a0c6'
+# hc attr theme.active.tab_title_color '#ababab'
+
+# hc attr theme.background_color '#00002e'
+
+# }}}1
+
+# USER {{{1
+hc set auto_detect_panels on
+hc set tabbed_max true
+hc set update_dragged_clients true
+#}}}1
+
+# Rules {{{1
+hc unrule -F
+#hc rule class=XTerm tag=3 # move all xterms to tag 3
+hc rule focus=on # normally focus new clients
+hc rule floatplacement=smart
+#hc rule class~'(.*[Rr]xvt.*|.*[Tt]erm.*|st)' focus=on # give focus to most common terminals
+hc rule windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' floating=on
+hc rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
+hc rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
+hc rule fixedsize floating=on
+
+# }}}1
+
+hc set tree_style '╾│ ├└╼─┐'
+
+# unlock, just to be sure
+hc unlock
+hc detect_monitors
+# Space for Xmobar
+hc pad 0 24
+
+# Init {{{1
+xsetroot -xcf "$HOME/.local/share/icons/volantes_light_cursors/cursors/left_ptr" 17 -solid "#000000"
+startup_bin=("unclutter" \
+	    "picom -b" \
+	    "nm-applet" \
+	    "xautolock -time 10 -locker slock -nowlocker slock -detectsleep -corners 000+ -cornerdelay 3" \
+	    "xmobar $XDG_CONFIG_HOME/xmobar/herbst.xmobarrc" \
+	    "redshift -c $XDG_CONFIG_HOME/redshift/redshift.conf")
+
+for bin in "${startup_bin[@]}"; do
+   number_proc=$(pidof "${bin%% *}")
+   for proc in "${number_proc[@]}"; do
+      if [[ -n $proc ]]; then
+       	kill -9 "${proc}"
+      fi
+   done
+   eval "${bin}" &
+done
+
+# Setting Xresources
+presentHour=$(date +%k)
+if [[ -n $DISPLAY && -n $XDG_VTNR ]]; then
+   xrdb -DHOUR_OF_DAY="$presentHour" -load "$HOME"/.Xresources
+fi
+
+
+
+# }}}1
+
+
+# vim: set fdm=marker:
+

@@ -1,0 +1,15 @@
+#!/bin/env bash
+
+current_tag=$(herbstclient attr tags.focus.name)
+current_frame=$(herbstclient attr tags.focus.focused_client.parent_frame.index)
+current_client=$(herbstclient attr clients.focus.winid)
+
+declare -a CLIENTS
+readarray -t CLIENTS < <(herbstclient list_clients --tag="${current_tag}" --frame="${current_frame}")
+
+for c in "${CLIENTS[@]}"; do
+   if [[ "${current_client}" == "${c}" ]]; then
+      continue
+   fi
+   herbstclient close "${c}"
+done

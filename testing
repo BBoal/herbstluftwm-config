@@ -1,0 +1,67 @@
+tags.focus.client_count changes -> new frame -> focus -> bring winid of new client
+
+
+_hc try silent new_attr int tags.focus.my_client_count 0
+set_attr monitors.focus.my_client_count '+=1'
+
+watch monitors.focus.my_client_count
+hooks attribute_changed path oldvalue newvalue
+
+hooks tags.focus.client_count
+
+
+foreach COUNT tags.focus.client_count \
+
+
+
+herbstclient -w '(quit_panel|reload)'
+    # stopp all started panels
+    kill ${pids[@]}
+} &
+
+----- From ypnos
+# activities and tags
+ACT_NAMES=( main devel write admin )
+ACT_KEYS=( {1..4} )
+TAG_NAMES=( un deux trois )
+
+hc rename default "${ACT_NAMES[0]}_${TAG_NAMES[0]}" || true
+for j in ${!ACT_NAMES[@]} ; do
+	act=${ACT_NAMES[$j]}
+	hc emit_hook activity_create "$act"
+	hc emit_hook activity_switch "$act"
+	for i in ${!TAG_NAMES[@]} ; do
+	    hc add "${act}_${TAG_NAMES[$i]}"
+	done
+	key="${ACT_KEYS[$j]}"
+	if  [ -n "$key" ] ; then
+		hc keybind "$Mod-$key" emit_hook activity_switch "$act"
+	fi
+done
+hc emit_hook activity_switch ${ACT_NAMES[0]}
+--- RESULT
+hc emit_hook activity_create main
+hc emit_hook activity_switch main
+hc add main_un
+hc add main_deux
+hc add main_trois
+hc keybind -1 emit_hook activity_switch main
+hc emit_hook activity_create devel
+hc emit_hook activity_switch devel
+hc add devel_un
+hc add devel_deux
+hc add devel_trois
+hc keybind -2 emit_hook activity_switch devel
+hc emit_hook activity_create write
+hc emit_hook activity_switch write
+hc add write_un
+hc add write_deux
+hc add write_trois
+hc keybind -3 emit_hook activity_switch write
+hc emit_hook activity_create admin
+hc emit_hook activity_switch admin
+hc add admin_un
+hc add admin_deux
+hc add admin_trois
+hc keybind -4 emit_hook activity_switch admin
+hc emit_hook activity_switch main
