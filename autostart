@@ -75,7 +75,7 @@ hc_dir="$HOME/.config/herbstluftwm"
 _hc export HLWM_HOME="${hc_dir}"
 
 ## wallpapers dir
-wallpapers="$HOME"/.config/wallpapers
+wallpapers="$HOME/.config/wallpapers"
 
 ### source: (https://github.com/t-wissmann/dotfiles)
 ## steps and opac_steps array declaration
@@ -296,18 +296,16 @@ _bind $Hyper-Ctrl-s chain \
 _bind $Hyper-Ctrl-Shift-s chain \
       . lock \
       . try silent substitute TAG tags.focus.name and \
-	  - foreach T tags.by-name. \
-	    sprintf TAG_ATTR "%c.name" T and \
-	      , compare TAG_ATTR "!=" TAG \
-	      , substitute SEL_TAG TAG_ATTR and \
+	  - foreach C clients. and \
+	    ,, sprintf CTAG_ATTR "%c.tag" C compare CTAG_ATTR "!=" TAG \
+	    ,, sprintf WINID_ATTR "%c.winid" C substitute XWIN WINID_ATTR close XWIN \
+	  - foreach T tags.by-name. and \
+	    , sprintf TAG_ATTR "%c.name" T compare TAG_ATTR "!=" TAG \
+	    , substitute SEL_TAG TAG_ATTR and \
 		,, use SEL_TAG \
 		,, foreach F tags.focus.tiling.root --recursive remove \
+		,, use_previous \
 	  - use TAG \
-	  - foreach C clients. \
-	    sprintf CTAG_ATTR "%c.tag" C and \
-	    ,, compare CTAG_ATTR "!=" TAG \
-	    ,, sprintf WINID_ATTR "%c.winid" C \
-	    substitute XWIN WINID_ATTR close XWIN \
       . unlock
 
 ## }}}3
