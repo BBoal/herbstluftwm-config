@@ -243,11 +243,10 @@ _bind $Hyper-q and \
     , try silent new_attr int clients.focus.my_close_count 0 \
     , set_attr clients.focus.my_close_count '+=1' \
     , compare clients.focus.my_close_count ge 3 \
-    , try sprintf BODY \
-      "Killing »%s« (%s)" \
+    , try sprintf BODY "Killing »%s« (%s)" \
 	  clients.focus.title clients.focus.winid \
 	  spawn notify-send BODY \
-	  , substitute WIN clients.focus.winid spawn xkill -id WIN
+    , substitute WIN clients.focus.winid spawn xkill -id WIN
 
 ### on the focused frame, close all but focused client
 _bind $Hyper-Shift-s chain \
@@ -258,7 +257,8 @@ _bind $Hyper-Shift-s chain \
       foreach CLIENT clients. and \
 	, sprintf TAG_ATTR "%c.tag" CLIENT compare TAG_ATTR "=" TAG \
 	, sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT compare FRAME_ATTR "=" FRAME \
-	, sprintf WINID_ATTR "%c.winid" CLIENT and ,, compare WINID_ATTR "!=" WINID \
+	, sprintf WINID_ATTR "%c.winid" CLIENT and \
+	      ,, compare WINID_ATTR "!=" WINID \
 	      ,, substitute XWIN WINID_ATTR close XWIN \
     . unlock
 
@@ -274,7 +274,7 @@ _bind $Hyper-Ctrl-s chain \
     . foreach F tags.focus.tiling.root --recursive remove \
     . unlock
 
-### close all clients and frames from all tags except the focused one
+### excluding focused tag close all other clients and frames
 _bind $Hyper-Ctrl-Shift-s chain \
       . lock \
       . try silent substitute TAG tags.focus.name and \
@@ -284,7 +284,7 @@ _bind $Hyper-Ctrl-Shift-s chain \
 	      , substitute SEL_TAG TAG_ATTR and \
 		,, use SEL_TAG \
 		,, foreach F tags.focus.tiling.root --recursive remove \
-	  - use TAG \
+		,, use_previous \
 	  - foreach C clients. \
 	    sprintf CTAG_ATTR "%c.tag" C and \
 	    ,, compare CTAG_ATTR "!=" TAG \
