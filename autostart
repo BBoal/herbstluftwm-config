@@ -265,21 +265,52 @@ _bind $Hyper-Shift-s \
       , compare WINID_ATTR "!=" WINID \
       , substitute XWIN WINID_ATTR close XWIN \
     . unlock
-### on the focused tag, close all but the focused frame
+
+# ### on the focused tag, close all but the focused frame (legacy)
+# _bind $Hyper-Ctrl-s \
+#     chain \
+#     . lock \
+#     . try silent substitute TAG tags.focus.name \
+#       substitute FRAME clients.focus.parent_frame.index \
+#       foreach CLIENT clients. \
+#       sprintf TAG_ATTR "%c.tag" CLIENT \
+#       sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
+#       sprintf WINID_ATTR "%c.winid" CLIENT and \
+#	 , compare TAG_ATTR "=" TAG \
+#	 , compare FRAME_ATTR "!=" FRAME \
+#	 , substitute XWINS WINID_ATTR close XWINS \
+#     . foreach F tags.focus.tiling.root --recursive remove \
+#     . unlock
+
+### on the focused tag, close all but the focused frame TESTING ok!
+# _bind $Hyper-Ctrl-s \
+#     chain \
+#     . lock \
+#     . try silent substitute TAG tags.focus.name \
+#       substitute FRAME clients.focus.parent_frame.index \
+#       foreach CLIENT clients. \
+#       sprintf TAG_ATTR "%c.tag" CLIENT and \
+#	 , compare TAG_ATTR "=" TAG \
+#	 , sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT and \
+#	     ,, compare FRAME_ATTR "!=" FRAME \
+#	     ,, sprintf WINID_ATTR "%c.winid" CLIENT \
+#		substitute XWINS WINID_ATTR close XWINS \
+#     . foreach F tags.focus.tiling.root --recursive remove \
+#     . unlock
+
+### on the focused tag, close all but the focused frame TESTING
 _bind $Hyper-Ctrl-s \
     chain \
     . lock \
     . try silent substitute TAG tags.focus.name \
       substitute FRAME clients.focus.parent_frame.index \
-      foreach CLIENT clients. \
-      sprintf TAG_ATTR "%c.tag" CLIENT \
-      sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT \
-      sprintf WINID_ATTR "%c.winid" CLIENT and \
-	 , compare TAG_ATTR "=" TAG \
-	 , compare FRAME_ATTR "!=" FRAME \
-	 , substitute XWINS WINID_ATTR close XWINS \
+      foreach CLIENT clients. and \
+	, sprintf TAG_ATTR "%c.tag" CLIENT compare TAG_ATTR "=" TAG \
+	, sprintf FRAME_ATTR "%c.parent_frame.index" CLIENT compare FRAME_ATTR "!=" FRAME \
+	, sprintf WINID_ATTR "%c.winid" CLIENT substitute XWINS WINID_ATTR close XWINS \
     . foreach F tags.focus.tiling.root --recursive remove \
     . unlock
+
 ### close all clients and frames from all tags except the focused one
 _bind $Hyper-Ctrl-Shift-s \
       chain \
