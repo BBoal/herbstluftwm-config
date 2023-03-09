@@ -36,8 +36,9 @@ _kavs() {
 
 # Initialization {{{1
 _hc emit_hook reload
-[[ -f "${XDG_CONFIG_HOME:-~/.config}/user-dirs.dirs" ]] && \
-    source "${XDG_CONFIG_HOME:-~/.config}/user-dirs.dirs"
+if [[ -z "${XDG_CONFIG_HOME}" ]] && [[ -f "$HOME/.config/user-dirs.dirs" ]]  ; then
+    source "$HOME/.config/user-dirs.dirs"
+fi
 
 ## TODO Colors
 my_background='#000000'
@@ -83,7 +84,7 @@ wallpapers="$HOME/.config/wallpapers"
 seq_steps=( $(seq 0 24) )
 steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
 	$(seq 25 -4 13) $(seq 9 -2 1) )
-readarray -t opac_steps < <(seq 100 -10 10)
+opac_steps=( $(seq 100 -10 10) )
 ### Offset example: "${seq_steps[@]:1}"  ->  1 2 3 4 5 6 7 8 9 10 .. 24
 
 # }}}1
@@ -104,7 +105,7 @@ _hc mousebind Super-Button3 resize
 # }}}2
 
 # top level commands {{{2
-_bind $Hyper-Alt-q   spawn "systemctl poweroff"
+_bind $Hyper-Alt-q   spawn systemctl poweroff
 _bind $Hyper-Alt-l   quit
 _bind $Hyper-Alt-r   reload
 # }}}2
@@ -176,9 +177,6 @@ _bind $Hyper-i         or \
 	. remove_attr clients.my_oldfocus \
 	. spawn notify-send -t 1000 -i edit-undo HLWM 'Jump to previously focused window' \
     : spawn notify-send -t 1000 -i messagebox_warning HLWM 'No urgent or formerly focused window'
-
-#### see contents of Depot tag
-_bind $Hyper-End	       try silent use Depot
 ## }}}3
 
 ## cycle {{{3
@@ -214,6 +212,7 @@ _bind $Hyper-Shift-Right  shift_edge right
 ### clients to Depot tag for later visualization
 ### TODO make clients return to original tags/frames
 _bind $Hyper-Delete chain . add Depot . move Depot
+_bind $Hyper-End    try silent use Depot
 _bind $Hyper-Insert try silent merge_tag Depot
 ## }}}3
 
@@ -285,11 +284,9 @@ _bind $Hyper-Ctrl-Shift-s chain \
 		,, use SEL_TAG \
 		,, foreach F tags.focus.tiling.root --recursive remove \
 		,, use_previous \
-	  - foreach C clients. \
-	    sprintf CTAG_ATTR "%c.tag" C and \
-	    ,, compare CTAG_ATTR "!=" TAG \
-	    ,, sprintf WINID_ATTR "%c.winid" C \
-	    substitute XWIN WINID_ATTR close XWIN \
+	  - foreach C clients. and \
+	    ,, sprintf CTAG_ATTR "%c.tag" C compare CTAG_ATTR "!=" TAG \
+	    ,, sprintf WINID_ATTR "%c.winid" C substitute XWIN WINID_ATTR close XWIN \
       . unlock
 
 ## }}}3
@@ -319,10 +316,9 @@ _bind $Hyper-Shift-m jumpto last-minimized
 ## unminimized all clients
 _bind $Hyper-Shift-u \
      foreach CLIENT clients. \
-      sprintf MINATT "%c.minimized" CLIENT and \
+	sprintf MINATT "%c.minimized" CLIENT and \
 	, compare MINATT "=" "true" \
 	, set_attr MINATT false
-## TODO bring client to focused tag/frame
 
 ##  layout cycling. skipping grid when clients=2 (grid=horizontal)
 #### TODO check dimensions on curwindow to ignore silly layouts
@@ -376,18 +372,19 @@ _attr theme.title_color '#ffffff'
 _attr theme.normal.title_color '#c6c8d1'
 
 # frame
-_set frame_border_active_color '#84a0c6'
-_set frame_border_normal_color '#33374c'
+_set frame_bg_active_color '#ffa62323'
 _set frame_bg_normal_color '#000000'
-_set frame_bg_active_color '#00002e'
+_set frame_border_active_color '#ff4000'
+_set frame_border_normal_color "${my_background:-#00000000}"
+_set frame_border_inner_color black
 
 # active, normal, urgent
-_attr theme.active.color '#668e3d'
-_attr theme.active.inner_color '#00000000'
-_attr theme.normal.color '#444b71'
+_attr theme.active.color "#4db8ff"
+_attr theme.active.inner_color '#4db8ff'
+_attr theme.normal.color '#00000000'
 _attr theme.normal.inner_color '#00000000'
 _attr theme.urgent.color '#e27878'
-_attr theme.urgent.inner_color '#c57339'
+_attr theme.urgent.inner_color '#ffa623'
 # copy inner color to outer_color
 for state in active urgent normal ; do
    _hc substitute C theme.${state}.inner_color \
@@ -408,7 +405,7 @@ _attr theme.background_color "${my_background:-#000000}"
 # USER Settings {{{1
 ## global
 _set show_frame_decorations focused
-_set frame_bg_transparent on
+_set frame_bg_transparent off
 _set smart_window_surroundings on
 _set mouse_recenter_gap 0
 _set focus_follows_mouse 0
@@ -426,16 +423,17 @@ _hc substitute ALGO settings.default_frame_layout \
       set_attr ATTR ALGO
 
 ## frames
-_set frame_gap "${seq_steps[1]}"
-_set frame_padding "${seq_steps[0]}"
-_set frame_border_width "${seq_steps[2]}"
+_set frame_gap  "${seq_steps[0]}"
+_set frame_padding  "${seq_steps[0]}"
+_set frame_border_width  "${seq_steps[3]}"      # must have diff >=1 from inner_width
+_set frame_border_inner_width "${seq_steps[0]}"	# check previous note
 
 ## opacity
-_set frame_active_opacity "${opac_steps[0]}"
-_set frame_normal_opacity "${opac_steps[1]}"
+_set frame_active_opacity "${opac_steps[1]}"
+_set frame_normal_opacity "${opac_steps[3]}"
 
 ## windows
-_set window_gap "${seq_steps[1]}"
+_set window_gap "${seq_steps[0]}"
 
 ## title
 _attr theme.title_when multiple_tabs
@@ -444,39 +442,40 @@ _attr theme.title_font 'SudoUI Nerd Font:size=13'  # example using Xft
 _attr theme.title_depth 4  # space below the title's baseline
 
 ## border
-_attr theme.border_width 3 # must have diff >=1 from inner_width
-_attr theme.inner_width 2  # check previous note
+_attr theme.border_width "${seq_steps[3]}"  # must have diff >=1 from inner_width
+_attr theme.inner_width  "${seq_steps[2]}"  # check previous note
 # TODO background
 _attr theme.inner_color "${my_background:-#000000}" # should match background color
 
 ## floating windows
-_attr theme.floating.border_width 6
-_attr theme.floating.outer_width 2
+_attr theme.floating.border_width "${seq_steps[6]}"
+_attr theme.floating.outer_width  "${seq_steps[2]}"
 
 ############ TODO
-#  background_color = #000000
-#  border_width = 3
-#  color = #000000
-#  inner_color = #000000
-#  inner_width = 2
-#  outer_color = #000000
-#  outer_width = 0
-#  padding_bottom = 0
-#  padding_left = 0
-#  padding_right = 0
-#  padding_top = 0
-#  reset = "Writing this resets all attributes to a default value"
-#  tab_color = "#3f83a6"
-#  tab_outer_color = ""
-#  tab_outer_width = ""
-#  tab_title_color = ""
-#  tight_decoration = false
-#  title_align = left
-#  title_color = #ffffff
-#  title_depth = 4
-#  title_font = SudoUI Nerd Font:size=13
-#  title_height = 14
-#  title_when = multiple_tabs
+# _attr theme.background_color = #000000
+# _attr theme.border_width = 3
+# _attr theme.color = #000000
+# _attr theme.inner_color = #000000
+# _attr theme.inner_width = 2
+# _attr theme.outer_color = #000000
+# _attr theme.outer_width = 0
+# _attr theme.padding_bottom = 0
+# _attr theme.padding_left = 0
+# _attr theme.padding_right = 0
+# _attr theme.padding_top = 0
+# _attr theme.reset = "Writing this resets all attributes to a default value"
+# _attr theme.tab_color = "#3f83a6"
+# _attr theme.tab_outer_color = ""
+# _attr theme.tab_outer_width = ""
+# _attr theme.tab_title_color = ""
+# _attr theme.tight_decoration = false
+# _attr theme.title_align = left
+# _attr theme.title_color = #ffffff
+# _attr theme.title_depth = 4
+# _attr theme.title_font = SudoUI Nerd Font:size=13
+# _attr theme.title_height = 14
+# _attr theme.title_when = multiple_tabs
+#
 # _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 # for state in active urgent normal ; do
 #    _hc substitute C theme.${state}.inner_color \
@@ -489,7 +488,7 @@ _attr theme.minimal.title_depth 4
 _attr theme.minimal.title_align 'center'
 _attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
 _attr theme.minimal.tab_color '#3f83a6'
-_attr theme.minimal.color "${color10:-#03a9f4}"
+_attr theme.minimal.color "${color10:-#4db8ff}"
 _attr theme.minimal.title_when multiple_tabs
 _attr theme.minimal.title_height 14
 #}}}1
@@ -537,14 +536,14 @@ for bin in "${startup_bin[@]}"; do
 done
 
 # setting Xresources
-presentHour=$(date +%k)
-if [[ -n $DISPLAY && -n $XDG_VTNR ]]; then
-  xrdb -DHOUR_OF_DAY="$presentHour" -load "$HOME"/.Xresources
-fi
+# presentHour=$(date +%k)
+# if [[ -n $DISPLAY && -n $XDG_VTNR ]]; then
+#   xrdb -DHOUR_OF_DAY="$presentHour" -load "$HOME"/.Xresources
+# fi
 
 # Preferred layout
-_hc load A '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
 if _hc silent new_attr bool my_not_first_autostart ; then
+    _hc load A '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
     _hc chain . spawn emacs . spawn firefox
 fi
 # }}}1

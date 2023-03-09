@@ -4,10 +4,10 @@ Super + button{1,2,3}
     herbstclient {move,zoom,resize}
 
 Hyper + Alt + {q,l,r}
-    herbstclient {spawn xterm -e "sudo /sbin/shutdown now",quit,reload}
+    herbstclient {spawn systemctl poweroff,quit,reload}
 
 Super + {Return,Delete,q}
-    herbstclient spawn {"${TERMINAL:-xterm}",xterm -e "$HOME/scripts/tm"}
+    herbstclient spawn {"${TERMINAL:-xterm}",xterm -e "$HOME/scripts/tm",close_or_remove}
 
 Hyper + {Return, Scroll_Lock}
     herbstclient spawn {rofi -show window -modi window -show-icons, \
