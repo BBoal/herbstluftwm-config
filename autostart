@@ -502,7 +502,7 @@ fi
 monitor_count=$(_attr monitors.count)
 for (( m=1; m<="${monitor_count}";m++ )) ; do
     #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
-    _bind "$Hyper+Shift+F${m}" chain , shift_to_monitor "$((m-1))" , focus_monitor "$((m-1))"
+    _bind "$Hyper+F${m}" chain , shift_to_monitor "$((m-1))" , focus_monitor "$((m-1))"
 done
 unset monitor_count m
 
@@ -512,7 +512,7 @@ tags_per_monitor=3
 for (( t=1; t<="${tags_per_monitor}";t++ )); do
     ### TODO Improve BTR list for other cases
     tag_names+=( {B,T,R}"${t}" )
-#    _bind "Super+F${t}" spawn _arrange_workspace "${t}"
+#    _bind "$Hyper+Super+F${t}" spawn _arrange_workspace "${t}"
 done
 unset t tags_per_monitor
 
@@ -531,17 +531,19 @@ unset t tags_per_monitor
 # tags definition {{{2
 ### TODO Workspaces should move as a block in all monitors
 _hc rename default "${tag_names[0]}" || true
+tag_keys=( {1..9} 0 )
 for i in "${!tag_names[@]}" ; do
    _hc add "${tag_names[$i]}"
-   key=$(((i+1) % 10))  ## Never get pass 10 numerical keys
+   key="${tag_keys[$i]}"
    if [ -n "$key" ] ; then
-       _bind "Super+$key" or \
+       _bind "$Hyper+$key" or \
 	     . and , compare tags.focus.index = "$i" , try use_previous \
 	     . use_index "$i"
        _bind "$Hyper+Shift+$key" move_index "$i"
+       _bind "$Hyper+Shift+F${key}" substitute W clients.focus.winid chain , move_index "$i" , jumpto W
    fi
 done
-unset tag_names i key
+unset tag_names tag_keys i key
 
 # }}}2
 
