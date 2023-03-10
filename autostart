@@ -17,7 +17,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.	If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
 # Functions {{{1
@@ -36,9 +36,6 @@ _kavs() {
 
 # Initialization {{{1
 _hc emit_hook reload
-if [[ -z "${XDG_CONFIG_HOME}" ]] && [[ -f "$HOME/.config/user-dirs.dirs" ]]  ; then
-    source "$HOME/.config/user-dirs.dirs"
-fi
 
 ## TODO Colors
 my_background='#000000'
@@ -65,18 +62,13 @@ _hc foreach T tags.by-name \
 # }}}1
 
 # Variables {{{1
-## Host
-HOSTNAME=$(hostname)
 
 ## Modkeys
 Hyper=Mod3
 
 ## config dir
-hc_dir="$HOME/.config/herbstluftwm"
-_hc export HLWM_HOME="${hc_dir}"
-
-## wallpapers dir
-wallpapers="$HOME/.config/wallpapers"
+hc_dir="$XDG_CONFIG_HOME/herbstluftwm"
+[[ -z "${HLWM_HOME}" ]] &&  _hc export HLWM_HOME="${hc_dir}"
 
 ### source: (https://github.com/t-wissmann/dotfiles)
 ## steps and opac_steps array declaration
@@ -89,14 +81,6 @@ opac_steps=( $(seq 100 -10 10) )
 
 # }}}1
 
-# Wallpaper {{{1
-if [[ "${HOSTNAME}" =~ tiny|desktop ]]; then
-   xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
-	      --output HDMI-1 --center "$wallpapers"/cron_blue.png
-	      # --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
-fi
-## }}}1
-
 # KEYBINDINGS {{{1
 # mouse {{{2
 _hc mousebind Super-Button1 move
@@ -105,7 +89,7 @@ _hc mousebind Super-Button3 resize
 # }}}2
 
 # top level commands {{{2
-_bind $Hyper-Alt-q   spawn systemctl poweroff
+_bind $Hyper-Alt-q   spawn sudo systemctl poweroff
 _bind $Hyper-Alt-l   quit
 _bind $Hyper-Alt-r   reload
 # }}}2
@@ -121,23 +105,6 @@ _bind $Hyper-Super-w     spawn firefox
 _bind $Hyper-Super-e     spawn emacs
 _bind $Hyper-Super-m     spawn thunar
 _bind $Hyper-Super-r     spawn "$hc_dir/dmenu_run_hlwm_v2"
-# }}}2
-
-# tags definition {{{2
-# TODO Workspaces should move as a block in all monitors
-tag_names=( {A..F} )
-tag_keys=( {1..6} )
-_hc rename default "${tag_names[0]}" || true
-for i in "${!tag_names[@]}" ; do
-   _hc add "${tag_names[$i]}"
-   key="${tag_keys[$i]}"
-   if [ -n "$key" ] ; then
-       _bind "Super-$key" or \
-	     . and , compare tags.focus.index = "$i" , try use_previous \
-	     . use_index "$i"
-       _bind "$Hyper-$key" move_index "$i"
-   fi
-done
 # }}}2
 
 # motions {{{2
@@ -505,35 +472,96 @@ _rule class=firefox tag=C
 _rule class=emacs tag=A
 # }}}1
 
-# Init {{{1
+
+# Multi-monitor setup {{{1
 ## unlock, just to be sure
 _hc unlock
 
-## multi-monitor setup
-_hc detect_monitors
-name_monitors=( "bottom" "top" "right" )
-for m in "${!name_monitors[@]}" ;  do
-    _hc rename_monitor "${m}" "${name_monitors[${m}]}"
-done
-### clients to monitor (have to be defined AFTER '_hc detect_monitors')
-#### ex. Hyper-Shift-F1  shift_to_monitor 0
-for m in $(seq 1 "$(_attr monitors.count)") ; do
-  _bind "$Hyper-Shift-F${m}" chain , shift_to_monitor "$((m-1))" , focus_monitor "$((m-1))"
-done
+#  Laptop/Desktop specifics {{{2
+## wallpapers dir
+wallpapers="$XDG_CONFIG_HOME/wallpapers"
 
-## program list
-startup_bin=( "unclutter" \
-	      "picom -b" \
-	      "nm-applet" \
-	      "xautolock -time 20 -locker slock -nowlocker slock -detectsleep -corners 000+ -cornerdelay 3" \
-	      "polybar &> /dev/null " \
-	      "redshift -c $XDG_CONFIG_HOME/redshift/redshift.conf" )
+if [[ "${HOSTNAME:-$(hostname)}" =~ tiny|desktop ]]; then
+    _hc set_monitors 1920x1080+0+1080 1920x1080+0+0 1200x1920+1920+240
+    xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
+	       --output HDMI-1 --center "$wallpapers"/cron_blue.png
+    # --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+    ## Defining monitors
+    ### TODO improve this for other cases (num mon)
+    name_monitors=( "bottom" "top" "right" )
+    for n in "${!name_monitors[@]}" ;  do
+	_hc rename_monitor "${n}" "${name_monitors[${n}]}"
+    done
+    unset name_monitors n
+else
+    _hc detect_monitors
+fi
+## }}}2
 
-for bin in "${startup_bin[@]}"; do
-  proc=${bin%% *}
-  [[ $(pidof "${proc}") -gt 0 ]] && killall "${proc}"
-  eval "${bin}" &
+### move clients to monitor (have to be defined AFTER '_hc detect_monitors')
+monitor_count=$(_attr monitors.count)
+for (( m=1; m<="${monitor_count}";m++ )) ; do
+    #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
+    _bind "$Hyper+Shift+F${m}" chain , shift_to_monitor "$((m-1))" , focus_monitor "$((m-1))"
 done
+unset monitor_count m
+
+### tags/monitor
+#### e.g 3 monitors/3 tags each -> B0(bottom0) T1(top0) R0(right0)  B1 T1 R1 ... (9 workspaces)
+tags_per_monitor=3
+for (( t=1; t<="${tags_per_monitor}";t++ )); do
+    ### TODO Improve BTR list for other cases
+    tag_names+=( {B,T,R}"${t}" )
+#    _bind "Super+F${t}" spawn _arrange_workspace "${t}"
+done
+unset t tags_per_monitor
+
+# _arrange_workspace() {
+#     monitor_count=$(_attr monitors.count)
+#     tags_per_monitor=3
+#     herbstclient chain \
+#		 , set swap_monitors_to_get_tag true \
+#		 , focus_monitor "$((m+t))" , use "${tag_names[$((t+3*m))]}" \
+#		 , focus_monitor "$((1))" , use "${tag_names[1+3m]}" \
+#		 , focus_monitor "$((2))" , use "${tag_names[2+3m]}" \
+#		 , set swap_monitors_to_get_tag false
+# }
+
+
+# tags definition {{{2
+### TODO Workspaces should move as a block in all monitors
+_hc rename default "${tag_names[0]}" || true
+for i in "${!tag_names[@]}" ; do
+   _hc add "${tag_names[$i]}"
+   key=$(((i+1) % 10))  ## Never get pass 10 numerical keys
+   if [ -n "$key" ] ; then
+       _bind "Super+$key" or \
+	     . and , compare tags.focus.index = "$i" , try use_previous \
+	     . use_index "$i"
+       _bind "$Hyper+Shift+$key" move_index "$i"
+   fi
+done
+unset tag_names i key
+
+# }}}2
+
+# }}}1
+
+
+# Init {{{1
+# ## program list
+# startup_bin=( "unclutter" \
+#	      "picom -b" \
+#	      "nm-applet" \
+#	      "xautolock -time 20 -locker slock -nowlocker slock -detectsleep -corners 000+ -cornerdelay 3" \
+#	      "polybar &> /dev/null " \
+#	      "redshift -c $XDG_CONFIG_HOME/redshift/redshift.conf" )
+
+# for bin in "${startup_bin[@]}"; do
+#   proc=${bin%% *}
+#   [[ $(pidof "${proc}") -gt 0 ]] && killall "${proc}"
+#   eval "${bin}" &
+# done
 
 # setting Xresources
 # presentHour=$(date +%k)
@@ -546,6 +574,10 @@ if _hc silent new_attr bool my_not_first_autostart ; then
     _hc load A '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
     _hc chain . spawn emacs . spawn firefox
 fi
+
+# Variable cleanup
+unset Hyper hc_dir wallpapers seq_steps steps opac_steps
+
 # }}}1
 
 
