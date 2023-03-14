@@ -26,12 +26,37 @@ _bind() { _hc keybind "$@";}
 _set()  { _hc set "$@";}
 _attr() { _hc attr "$@";}
 _rule() { _hc rule "$@";}
-_kavs() {
-    # $1 keybind $2 attribute $3 values $4 string
-    # shellcheck disable=SC2086
-    _bind "$1" and , cycle_value "$2"  $3 \
-		   , sprintf BODY "$4" "$2" spawn notify-send BODY
+_autostart_reload() { _hc silent get_attr my_not_first_autostart;}
+_kavs() { # $1 keybind $2 attribute $3 values $4 string
+	  # shellcheck disable=SC2086
+	  _bind "$1" and , cycle_value "$2"  $3 \
+		, sprintf BODY "$4" "$2" spawn notify-send BODY;}
+## Helper function do organize workspaces
+_arrange_workspace() { t=$1
+		       cat <<-EOF
+herbstclient chain , lock \
+, set swap_monitors_to_get_tag true \\
+EOF
+		       for (( m=0;m<"${monitor_count}";m++ )); do
+			   cat <<-EOF
+, focus_monitor ${m} , use_index $((m+t*monitor_count)) \\
+EOF
+		       done
+		       cat <<-EOF
+, set swap_monitors_to_get_tag false , unlock
+EOF
 }
+# Statically define which tag should be send to which monitor
+lock_in_monitor_the_tags() {
+    local mon="$1"
+    shift
+    for t in "$@"; do
+	herbstclient chain \
+	    , try new_attr string tags."$t".my_monitor \
+	    , set_attr tags."$t".my_monitor "$mon"
+    done
+}
+
 # }}}1
 
 # Initialization {{{1
@@ -39,9 +64,6 @@ _hc emit_hook reload
 
 ## TODO Colors
 my_background='#000000'
-
-xsetroot -xcf "$XDG_DATA_HOME/icons/volantes_light_cursors/cursors/left_ptr" 17 \
-	 -solid "${my_background:-#000000}"
 
 ### source: (https://github.com/ypnos/hlwm)
 ## clearing bindings and rules
@@ -52,36 +74,120 @@ done
 ## resets active,floating,fullscreen,minimal,normal,tiling and urgent
 _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 
+## removes all empty tags on reload
 ### source: (https://github.com/t-wissmann/dotfiles)
-## remove empty tags
-_hc foreach T tags.by-name \
-   sprintf ATTR_client_count '%c.client_count' T \
-   and , compare ATTR_client_count = 0 \
-       , sprintf ATTR_NAME '%c.name' T \
-	 substitute NAME ATTR_NAME merge_tag NAME
+if _autostart_reload; then
+    _hc foreach T tags.by-name \
+	sprintf ATTR_client_count '%c.client_count' T \
+	   and , compare ATTR_client_count = 0 \
+	       , sprintf ATTR_NAME '%c.name' T \
+		     substitute NAME ATTR_NAME merge_tag NAME
+fi
 # }}}1
 
 # Variables {{{1
-
 ## Modkeys
 Hyper=Mod3
 
 ## config dir
 hc_dir="$XDG_CONFIG_HOME/herbstluftwm"
-[[ -z "${HLWM_HOME}" ]] &&  _hc export HLWM_HOME="${hc_dir}"
+[[ -z "$HLWM_HOME" ]] &&  _hc export HLWM_HOME="$hc_dir"
+
+## wallpapers dir
+wallpapers="$XDG_CONFIG_HOME/wallpapers"
+
+## Monitor setup
+### User preference
+tags_per_monitor=3
+tag_keys=( {1..9} 0 )
+### choice of 3 monitors/3 tags each -> L0(lower0) U1(upper0) R0(right0)  L1 U1 R1 ... (9 workspaces)
+monitor_name=("lower_center" "upper_center" "right_side" "left_side" )
+### number of physical monitors
+monitor_count=$(xrandr --current | grep -c '\sconnected')
+### filtering through the name list
+monitor_name=( "${monitor_name[@]::${monitor_count}}" )
+### getting first char turned uppercase of monitor_name
+for mon in "${monitor_name[@]}"; do
+    prefix_mon_name="${mon%_*}"
+    char_prefix_mon_name="${prefix_mon_name::1}"
+    upper_char_prefix_mon_name+=( "${char_prefix_mon_name^}" )
+done
+unset mon prefix_mon_name char_prefix_mon_name
 
 ### source: (https://github.com/t-wissmann/dotfiles)
-## steps and opac_steps array declaration
 ## TODO implement theme/colors related cycle_values in sxhkd
 seq_steps=( $(seq 0 24) )
 steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
-	$(seq 25 -4 13) $(seq 9 -2 1) )
+		     $(seq 25 -4 13) $(seq 9 -2 1) )
 opac_steps=( $(seq 100 -10 10) )
 ### Offset example: "${seq_steps[@]:1}"  ->  1 2 3 4 5 6 7 8 9 10 .. 24
 
 # }}}1
 
-# KEYBINDINGS {{{1
+# Tags - Workspaces - Monitors {{{1
+
+## naming tags
+for ((t=0; t<"${tags_per_monitor}";t++)); do
+    for i in "${!upper_char_prefix_mon_name[@]}"; do
+	### combining L U R with chosen number of tags/monitor L0 U0 R0 .. L2 U2 R2
+	tag_names+=( "${upper_char_prefix_mon_name[${i}]}""${t}" )
+    done
+    ### Hyper-Super-F1 gets L0 U0 R0 in monitors
+    _bind "$Hyper+Super+F$((t+1))" spawn bash -c "$(_arrange_workspace ${t})"
+done
+unset t i upper_char_prefix_mon_name
+
+## defining and assigning tags to keys
+_hc rename default "${tag_names[0]}" || true
+for i in "${!tag_names[@]}" ; do
+    _hc add "${tag_names[$i]}"
+    key="${tag_keys[$i]}"
+    if [ -n "$key" ] ; then
+	_bind "Super+$key" or \
+	      . and , compare tags.focus.index = "$i" , try use_previous \
+	      . chain \
+		  , silent substitute M tags."$i".my_monitor focus_monitor M \
+		  , use_index "$i"
+	_bind "$Hyper+$key" move_index "$i"
+	_bind "$Hyper+Shift+$key" chain . move_index "$i" \
+		  . silent substitute M tags."$i".my_monitor focus_monitor M \
+		  . use_index "$i"
+	_bind "$Hyper+Shift+F${key}" substitute W clients.focus.winid chain , move_index "$i" , jumpto W
+    fi
+done
+unset i
+
+## TODO
+lock_in_monitor_the_tags 0 {0,3,6}
+lock_in_monitor_the_tags 1 {1,4,7}
+lock_in_monitor_the_tags 2 {2,5,8}
+
+## auto-detect physical monitors
+## REMINDER that each monitor needs to be populated with an available tag
+_hc detect_monitors
+
+## naming monitors
+for n in "${!monitor_name[@]}" ;  do
+    _hc try silent rename_monitor "${n}" "${monitor_name[${n}]}"
+done
+unset n
+
+## Lock tags to specific monitors
+
+
+## wallpapers
+### TODO: Improve choice of --output according with list_monitors
+xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
+	   --output HDMI-1 --center "$wallpapers"/cron_blue.png &> /dev/null
+# --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+
+# }}}2
+
+
+
+## }}}1
+
+# Keybindings {{{1
 # mouse {{{2
 _hc mousebind Super-Button1 move
 _hc mousebind Super-Button2 zoom
@@ -91,7 +197,9 @@ _hc mousebind Super-Button3 resize
 # top level commands {{{2
 _bind $Hyper-Alt-q   spawn sudo systemctl poweroff
 _bind $Hyper-Alt-l   quit
+_bind Alt-F5         quit
 _bind $Hyper-Alt-r   reload
+_bind Alt-F9         reload
 # }}}2
 
 # launching programs {{{2
@@ -110,30 +218,30 @@ _bind $Hyper-Super-r     spawn "$hc_dir/dmenu_run_hlwm_v2"
 # motions {{{2
 ## focus {{{3
 ### clients
-_bind Super-h	       focus left  --level=all
-_bind Super-j          focus down  --level=all
-_bind Super-k          focus up    --level=all
-_bind Super-l          focus right --level=all
-_bind Super-Left       focus_edge left
-_bind Super-Down       focus_edge down
-_bind Super-Up         focus_edge up
-_bind Super-Right      focus_edge right
+_bind Super-h	   silent  focus left  --level=all
+_bind Super-j      silent  focus down  --level=all
+_bind Super-k      silent  focus up    --level=all
+_bind Super-l      silent  focus right --level=all
+_bind Super-Left   silent  focus_edge left
+_bind Super-Down   silent  focus_edge down
+_bind Super-Up     silent  focus_edge up
+_bind Super-Right  silent  focus_edge right
 ### visible clients only
-_bind $Hyper-h	       focus left  -i
-_bind $Hyper-j	       focus down  -i
-_bind $Hyper-k	       focus up    -i
-_bind $Hyper-l	       focus right -i
+_bind $Hyper-h	   silent  focus left  -i
+_bind $Hyper-j	   silent  focus down  -i
+_bind $Hyper-k	   silent  focus up    -i
+_bind $Hyper-l	   silent  focus right -i
 ### monitors
-_bind Super-y	       focus_monitor -l
-_bind Super-u	       focus_monitor -d
-_bind Super-i	       focus_monitor -u
-_bind Super-o	       focus_monitor -r
+_bind Super-y	   silent  focus_monitor -l
+_bind Super-u	   silent  focus_monitor -d
+_bind Super-i	   silent  focus_monitor -u
+_bind Super-o	   silent  focus_monitor -r
 ### focus previous tag
 _bind Super-BackSpace  use_previous
 ### source: (https://github.com/t-wissmann/dotfiles)
 ## jumps to urgent either from a client or a frame
 ## next call will try to return to previous client if applicable
-_bind $Hyper-i         or \
+_bind $Hyper-i  silent or \
     : substitute WINID clients.focus.winid and \
 	. jumpto urgent \
 	. try new_attr string clients.my_oldfocus \
@@ -148,33 +256,42 @@ _bind $Hyper-i         or \
 
 ## cycle {{{3
 ### clients and frames
-_bind Super-Tab        cycle_all +1
-_bind Super-Shift-Tab  cycle_all -1
+_bind Super-Tab       cycle_all +1
+_bind Super-Shift-Tab cycle_all -1
 ### clients
-_bind Super-b	       cycle +1
-_bind Super-Shift-b    cycle -1
+_bind Super-b	      cycle +1
+_bind Super-Shift-b   cycle -1
 ### frames
-_bind Super-v	       cycle_frame +1
-_bind Super-Shift-v    cycle_frame -1
+_bind Super-v	      cycle_frame +1
+_bind Super-Shift-v   cycle_frame -1
 ### tags
-_bind Super-period     use_index +1 --skip-visible
-_bind Super-comma      use_index -1 --skip-visible
+_bind Super-period    use_index +"$monitor_count"
+_bind Super-comma     use_index -"$monitor_count"
+_bind $Hyper-period   use_index +1 --skip-visible
+_bind $Hyper-comma    use_index -1 --skip-visible
 ### monitors
-_bind Super-c          cycle_monitor +1
-_bind Super-Shift-c    cycle_monitor -1
+_bind Super-c         cycle_monitor +1
+_bind Super-Shift-c   cycle_monitor -1
 ## }}}3
 
 ## shifting {{{3
 ### clients and frames
-_bind $Hyper-Shift-h  shift left
-_bind $Hyper-Shift-j  shift down
-_bind $Hyper-Shift-k  shift up
-_bind $Hyper-Shift-l  shift right
+_bind $Hyper-Shift-h      shift left
+_bind $Hyper-Shift-j      shift down
+_bind $Hyper-Shift-k      shift up
+_bind $Hyper-Shift-l      shift right
 ### clients to edge of tag
 _bind $Hyper-Shift-Left   shift_edge left
 _bind $Hyper-Shift-Down   shift_edge down
 _bind $Hyper-Shift-Up     shift_edge up
 _bind $Hyper-Shift-Right  shift_edge right
+
+### shift clients to monitor
+for (( m=0; m<"${monitor_count}";m++ )) ; do
+    #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
+    _bind "$Hyper+F$((m+1))" chain , shift_to_monitor "${m}" , focus_monitor "${m}"
+done
+unset m
 
 ### clients to Depot tag for later visualization
 ### TODO make clients return to original tags/frames
@@ -385,7 +502,7 @@ _set default_frame_layout max
 #### source: (https://github.com/t-wissmann/dotfiles)
 ## making open frames revert to default layout on reload
 _hc substitute ALGO settings.default_frame_layout \
-      foreach T tags.by-name. \
+      try silent foreach T tags.by-name. \
       sprintf ATTR '%c.tiling.root.algorithm' T \
       set_attr ATTR ALGO
 
@@ -446,7 +563,7 @@ _attr theme.floating.outer_width  "${seq_steps[2]}"
 # _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 # for state in active urgent normal ; do
 #    _hc substitute C theme.${state}.inner_color \
-#	      attr theme.${state}.outer_color C
+#        attr theme.${state}.outer_color C
 
 
 # Theme Minimal
@@ -468,118 +585,22 @@ _rule fixedsize floating=on
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' floating=on
 _rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
-_rule class=firefox tag=C
-_rule class=emacs tag=A
+_rule windowrole~'browser' tag="${tag_names[2]}"
+_rule class=mpv tag="${tag_names[1]}" fullscreen=true
+_rule class=emacs tag="${tag_names[0]}"
 # }}}1
-
-
-# Multi-monitor setup {{{1
-## unlock, just to be sure
-_hc unlock
-
-#  Laptop/Desktop specifics {{{2
-## wallpapers dir
-wallpapers="$XDG_CONFIG_HOME/wallpapers"
-
-if [[ "${HOSTNAME:-$(hostname)}" =~ tiny|desktop ]]; then
-    _hc set_monitors 1920x1080+0+1080 1920x1080+0+0 1200x1920+1920+240
-    xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
-	       --output HDMI-1 --center "$wallpapers"/cron_blue.png
-    # --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
-    ## Defining monitors
-    ### TODO improve this for other cases (num mon)
-    name_monitors=( "bottom" "top" "right" )
-    for n in "${!name_monitors[@]}" ;  do
-	_hc rename_monitor "${n}" "${name_monitors[${n}]}"
-    done
-    unset name_monitors n
-else
-    _hc detect_monitors
-fi
-## }}}2
-
-### move clients to monitor (have to be defined AFTER '_hc detect_monitors')
-monitor_count=$(_attr monitors.count)
-for (( m=1; m<="${monitor_count}";m++ )) ; do
-    #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
-    _bind "$Hyper+F${m}" chain , shift_to_monitor "$((m-1))" , focus_monitor "$((m-1))"
-done
-unset monitor_count m
-
-### tags/monitor
-#### e.g 3 monitors/3 tags each -> B0(bottom0) T1(top0) R0(right0)  B1 T1 R1 ... (9 workspaces)
-tags_per_monitor=3
-for (( t=1; t<="${tags_per_monitor}";t++ )); do
-    ### TODO Improve BTR list for other cases
-    tag_names+=( {B,T,R}"${t}" )
-#    _bind "$Hyper+Super+F${t}" spawn _arrange_workspace "${t}"
-done
-unset t tags_per_monitor
-
-# _arrange_workspace() {
-#     monitor_count=$(_attr monitors.count)
-#     tags_per_monitor=3
-#     herbstclient chain \
-#		 , set swap_monitors_to_get_tag true \
-#		 , focus_monitor "$((m+t))" , use "${tag_names[$((t+3*m))]}" \
-#		 , focus_monitor "$((1))" , use "${tag_names[1+3m]}" \
-#		 , focus_monitor "$((2))" , use "${tag_names[2+3m]}" \
-#		 , set swap_monitors_to_get_tag false
-# }
-
-
-# tags definition {{{2
-### TODO Workspaces should move as a block in all monitors
-_hc rename default "${tag_names[0]}" || true
-tag_keys=( {1..9} 0 )
-for i in "${!tag_names[@]}" ; do
-   _hc add "${tag_names[$i]}"
-   key="${tag_keys[$i]}"
-   if [ -n "$key" ] ; then
-       _bind "$Hyper+$key" or \
-	     . and , compare tags.focus.index = "$i" , try use_previous \
-	     . use_index "$i"
-       _bind "$Hyper+Shift+$key" move_index "$i"
-       _bind "$Hyper+Shift+F${key}" substitute W clients.focus.winid chain , move_index "$i" , jumpto W
-   fi
-done
-unset tag_names tag_keys i key
-
-# }}}2
-
-# }}}1
-
 
 # Init {{{1
-# ## program list
-# startup_bin=( "unclutter" \
-#	      "picom -b" \
-#	      "nm-applet" \
-#	      "xautolock -time 20 -locker slock -nowlocker slock -detectsleep -corners 000+ -cornerdelay 3" \
-#	      "polybar &> /dev/null " \
-#	      "redshift -c $XDG_CONFIG_HOME/redshift/redshift.conf" )
-
-# for bin in "${startup_bin[@]}"; do
-#   proc=${bin%% *}
-#   [[ $(pidof "${proc}") -gt 0 ]] && killall "${proc}"
-#   eval "${bin}" &
-# done
-
-# setting Xresources
-# presentHour=$(date +%k)
-# if [[ -n $DISPLAY && -n $XDG_VTNR ]]; then
-#   xrdb -DHOUR_OF_DAY="$presentHour" -load "$HOME"/.Xresources
-# fi
-
-# Preferred layout
-if _hc silent new_attr bool my_not_first_autostart ; then
-    _hc load A '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
-    _hc chain . spawn emacs . spawn firefox
+## Preferred layout on startup / remove empty tags otherwise
+if ! _autostart_reload; then
+    _hc load "${tag_names[0]}" '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
+    _hc chain . spawn emacs . spawn brave
+    #"MESA_DEBUG=silent firefox"
+    _hc silent new_attr bool my_not_first_autostart true
 fi
 
-# Variable cleanup
-unset Hyper hc_dir wallpapers seq_steps steps opac_steps
-
+_hc unlock
+unset tag_keys tag_names monitor_name monitor_count
 # }}}1
 
 
