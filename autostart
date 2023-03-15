@@ -27,10 +27,6 @@ _set()  { _hc set "$@";}
 _attr() { _hc attr "$@";}
 _rule() { _hc rule "$@";}
 _autostart_reload() { _hc silent get_attr my_not_first_autostart;}
-_kavs() { # $1 keybind $2 attribute $3 values $4 string
-	  # shellcheck disable=SC2086
-	  _bind "$1" and , cycle_value "$2"  $3 \
-		, sprintf BODY "$4" "$2" spawn notify-send BODY;}
 ## Helper function do organize workspaces
 _arrange_workspace() { t=$1
 		       cat <<-EOF
@@ -45,16 +41,6 @@ EOF
 		       cat <<-EOF
 , set swap_monitors_to_get_tag false , unlock
 EOF
-}
-# Statically define which tag should be send to which monitor
-lock_in_monitor_the_tags() {
-    local mon="$1"
-    shift
-    for t in "$@"; do
-	herbstclient chain \
-	    , try new_attr string tags."$t".my_monitor \
-	    , set_attr tags."$t".my_monitor "$mon"
-    done
 }
 
 # }}}1
@@ -81,7 +67,7 @@ if _autostart_reload; then
 	sprintf ATTR_client_count '%c.client_count' T \
 	   and , compare ATTR_client_count = 0 \
 	       , sprintf ATTR_NAME '%c.name' T \
-		     substitute NAME ATTR_NAME merge_tag NAME
+		   try silent substitute NAME ATTR_NAME merge_tag NAME
 fi
 # }}}1
 
@@ -146,21 +132,36 @@ for i in "${!tag_names[@]}" ; do
 	_bind "Super+$key" or \
 	      . and , compare tags.focus.index = "$i" , try use_previous \
 	      . chain \
-		  , silent substitute M tags."$i".my_monitor focus_monitor M \
-		  , use_index "$i"
+	      , silent substitute M tags."$i".my_monitor focus_monitor M \
+	      , use_index "$i"
 	_bind "$Hyper+$key" move_index "$i"
-	_bind "$Hyper+Shift+$key" chain . move_index "$i" \
-		  . silent substitute M tags."$i".my_monitor focus_monitor M \
-		  . use_index "$i"
-	_bind "$Hyper+Shift+F${key}" substitute W clients.focus.winid chain , move_index "$i" , jumpto W
+	_bind "$Hyper+Shift+$key" chain . lock . move_index "$i" \
+	      . silent substitute M tags."$i".my_monitor focus_monitor M \
+	      . use_index "$i" . unlock
     fi
 done
 unset i
 
-## TODO
-lock_in_monitor_the_tags 0 {0,3,6}
-lock_in_monitor_the_tags 1 {1,4,7}
-lock_in_monitor_the_tags 2 {2,5,8}
+# Statically define which tag should be send to which monitor
+lock_in_monitor_the_tags() {
+    local mon="$1"
+    shift
+    for t in "$@"; do
+	herbstclient chain \
+		     , try new_attr string tags."$t".my_monitor \
+		     , try set_attr tags."$t".my_monitor "$mon"
+    done
+}
+# Lock tags to specific monitors. e.g
+## lock_in_monitor_the_tags 0 {0,3,6}
+## lock_in_monitor_the_tags 1 {1,4,7}
+for ((m=0;m<"${monitor_count}";m++)); do
+    for t in "${!tag_names[@]}"; do
+	if (( t % monitor_count == 0 )); then
+	    lock_in_monitor_the_tags "$m" "$((t+m))"
+	fi
+    done
+done
 
 ## auto-detect physical monitors
 ## REMINDER that each monitor needs to be populated with an available tag
@@ -172,20 +173,15 @@ for n in "${!monitor_name[@]}" ;  do
 done
 unset n
 
-## Lock tags to specific monitors
-
 
 ## wallpapers
 ### TODO: Improve choice of --output according with list_monitors
 xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
 	   --output HDMI-1 --center "$wallpapers"/cron_blue.png &> /dev/null
-# --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+### --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
 
-# }}}2
-
-
-
-## }}}1
+## }}}2
+# }}}1
 
 # Keybindings {{{1
 # mouse {{{2
@@ -276,10 +272,19 @@ _bind Super-Shift-c   cycle_monitor -1
 
 ## shifting {{{3
 ### clients and frames
-_bind $Hyper-Shift-h      shift left
-_bind $Hyper-Shift-j      shift down
-_bind $Hyper-Shift-k      shift up
-_bind $Hyper-Shift-l      shift right
+_shift_or_detach() {
+    dir="$2"
+    [[ "$2" == "up" ]] && dir="top"
+    [[ "$2" == "down" ]] && dir="bottom"
+    _bind "$1" or , shift "$2" \
+		  , silent and \
+		     + compare tags.focus.curframe_wcount gt 1 \
+		     + split "$dir" 0.5 + shift "$2" ;}
+
+_shift_or_detach $Hyper-Shift-h left
+_shift_or_detach $Hyper-Shift-j down
+_shift_or_detach $Hyper-Shift-k up
+_shift_or_detach $Hyper-Shift-l right
 ### clients to edge of tag
 _bind $Hyper-Shift-Left   shift_edge left
 _bind $Hyper-Shift-Down   shift_edge down
@@ -303,10 +308,10 @@ _bind $Hyper-Insert try silent merge_tag Depot
 ## resizing {{{3
 ### frames and floating clients
 resizestep=0.01
-_bind $Hyper-Left   resize left  +$resizestep
-_bind $Hyper-Down   resize down  +$resizestep
-_bind $Hyper-Up     resize up	 +$resizestep
-_bind $Hyper-Right  resize right +$resizestep
+_bind $Hyper-Left   resize left  +"$resizestep"
+_bind $Hyper-Down   resize down  +"$resizestep"
+_bind $Hyper-Up     resize up	 +"$resizestep"
+_bind $Hyper-Right  resize right +"$resizestep"
 ## }}}3
 
 ## rotate/mirror {{{3
@@ -413,6 +418,12 @@ _bind $Hyper-minus \
 ## }}}2
 
 # customize theme {{{2
+## Helper func to minimize repetition
+_kavs() { # $1 keybind $2 attribute $3 values $4 string
+	  # shellcheck disable=SC2086
+	  _bind "$1" and , cycle_value "$2"  $3 \
+		, sprintf BODY "$4" "$2" spawn notify-send BODY;}
+
 ## frames
 _kavs Super-Ctrl-d	settings.show_frame_decorations \
 			"none nonempty if_multiple if_empty focused focused_if_multiple all" \
