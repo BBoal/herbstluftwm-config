@@ -62,12 +62,19 @@ _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 
 ## removes all empty tags on reload
 ### source: (https://github.com/t-wissmann/dotfiles)
+#### TODO try to use 'remove' instead of 'merge_tags' or check for regular tags and use
+#### 'merge_tags' on the previously and now empty added ones
 if _autostart_reload; then
-    _hc foreach T tags.by-name \
-	sprintf ATTR_client_count '%c.client_count' T \
-	   and , compare ATTR_client_count = 0 \
-	       , sprintf ATTR_NAME '%c.name' T \
-		   try silent substitute NAME ATTR_NAME merge_tag NAME
+    _hc chain . lock \
+	. foreach T tags.by-name \
+	    sprintf ATTR_client_count '%c.client_count' T and \
+	       , compare ATTR_client_count = 0 \
+	       , sprintf ATTR_NAME '%c.name' T and \
+		    + substitute T_NAME ATTR_NAME use T_NAME \
+		    + foreach R tags.focus.tiling.root --recursive remove \
+		    + try use_previous \
+	. unlock
+	# try silent substitute NAME ATTR_NAME merge_tag NAME
 fi
 # }}}1
 
@@ -98,7 +105,7 @@ for mon in "${monitor_name[@]}"; do
     char_prefix_mon_name="${prefix_mon_name::1}"
     upper_char_prefix_mon_name+=( "${char_prefix_mon_name^}" )
 done
-unset mon prefix_mon_name char_prefix_mon_name
+unset prefix_mon_name char_prefix_mon_name
 
 ### source: (https://github.com/t-wissmann/dotfiles)
 ## TODO implement theme/colors related cycle_values in sxhkd
@@ -121,10 +128,11 @@ for ((t=0; t<"${tags_per_monitor}";t++)); do
     ### Hyper-Super-F1 gets L0 U0 R0 in monitors
     _bind "$Hyper+Super+F$((t+1))" spawn bash -c "$(_arrange_workspace ${t})"
 done
-unset t i upper_char_prefix_mon_name
+unset upper_char_prefix_mon_name
 
 ## defining and assigning tags to keys
-_hc rename default "${tag_names[0]}" || true
+#### HACK
+_hc silent rename default "${tag_names[0]}" || true
 for i in "${!tag_names[@]}" ; do
     _hc add "${tag_names[$i]}"
     key="${tag_keys[$i]}"
@@ -140,7 +148,6 @@ for i in "${!tag_names[@]}" ; do
 	      . use_index "$i" . unlock
     fi
 done
-unset i
 
 # Statically define which tag should be send to which monitor
 lock_in_monitor_the_tags() {
@@ -148,8 +155,8 @@ lock_in_monitor_the_tags() {
     shift
     for t in "$@"; do
 	herbstclient chain \
-		     , try new_attr string tags."$t".my_monitor \
-		     , try set_attr tags."$t".my_monitor "$mon"
+		     , silent new_attr string tags."$t".my_monitor \
+		     , silent set_attr tags."$t".my_monitor "$mon"
     done
 }
 # Lock tags to specific monitors. e.g
@@ -171,14 +178,13 @@ _hc detect_monitors
 for n in "${!monitor_name[@]}" ;  do
     _hc try silent rename_monitor "${n}" "${monitor_name[${n}]}"
 done
-unset n
-
 
 ## wallpapers
-### TODO: Improve choice of --output according with list_monitors
-xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
-	   --output HDMI-1 --center "$wallpapers"/cron_blue.png &> /dev/null
-### --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+if [[ "${HOSTNAME:-$(hostname)}"  =~ tiny|desktop ]]; then
+    xwallpaper --output DP-2-1 --center "$wallpapers"/root_blue.png \
+	       --output HDMI-1 --center "$wallpapers"/cron_blue.png &> /dev/null
+    ### --output DP-2-8 --center "$wallpapers"/wallhaven-wq8ewp_1200x1920.png
+fi
 
 ## }}}2
 # }}}1
@@ -279,12 +285,13 @@ _shift_or_detach() {
     _bind "$1" or , shift "$2" \
 		  , silent and \
 		     + compare tags.focus.curframe_wcount gt 1 \
-		     + split "$dir" 0.5 + shift "$2" ;}
-
+		     + split "$dir" 0.5 + shift "$2"
+}
 _shift_or_detach $Hyper-Shift-h left
 _shift_or_detach $Hyper-Shift-j down
 _shift_or_detach $Hyper-Shift-k up
 _shift_or_detach $Hyper-Shift-l right
+
 ### clients to edge of tag
 _bind $Hyper-Shift-Left   shift_edge left
 _bind $Hyper-Shift-Down   shift_edge down
@@ -296,7 +303,6 @@ for (( m=0; m<"${monitor_count}";m++ )) ; do
     #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
     _bind "$Hyper+F$((m+1))" chain , shift_to_monitor "${m}" , focus_monitor "${m}"
 done
-unset m
 
 ### clients to Depot tag for later visualization
 ### TODO make clients return to original tags/frames
@@ -394,7 +400,6 @@ _bind $Hyper-Ctrl-space split explode
 _bind $Hyper-Ctrl-ccedilla cycle_value tags.focus.tiling.root.fraction 0.5 0.6666 0.3333
 
 ## Clients
-## TODO confirm if all are needed
 _bind $Hyper-f floating toggle
 _bind $Hyper-z fullscreen toggle
 _bind $Hyper-p pseudotile toggle
@@ -493,7 +498,7 @@ _attr theme.active.tab_color '#2d539e'
 _attr theme.active.tab_outer_color '#84a0c6'
 _attr theme.active.tab_title_color '#ababab'
 
-_attr theme.background_color "${my_background:-#000000}"
+_attr theme.background_color "${background:-#000000}"
 
 # }}}1
 
@@ -539,8 +544,7 @@ _attr theme.title_depth 4  # space below the title's baseline
 ## border
 _attr theme.border_width "${seq_steps[3]}"  # must have diff >=1 from inner_width
 _attr theme.inner_width  "${seq_steps[2]}"  # check previous note
-# TODO background
-_attr theme.inner_color "${my_background:-#000000}" # should match background color
+_attr theme.inner_color "${background:-#000000}" # should match background color
 
 ## floating windows
 _attr theme.floating.border_width "${seq_steps[6]}"
@@ -558,7 +562,6 @@ _attr theme.floating.outer_width  "${seq_steps[2]}"
 # _attr theme.padding_left = 0
 # _attr theme.padding_right = 0
 # _attr theme.padding_top = 0
-# _attr theme.reset = "Writing this resets all attributes to a default value"
 # _attr theme.tab_color = "#3f83a6"
 # _attr theme.tab_outer_color = ""
 # _attr theme.tab_outer_width = ""
@@ -602,11 +605,10 @@ _rule class=emacs tag="${tag_names[0]}"
 # }}}1
 
 # Init {{{1
-## Preferred layout on startup / remove empty tags otherwise
+## Preferred layout on startup
 if ! _autostart_reload; then
     _hc load "${tag_names[0]}" '(split horizontal:0.5:1 (clients max:0) (clients max:0))'
-    _hc chain . spawn emacs . spawn brave
-    #"MESA_DEBUG=silent firefox"
+    _hc chain . spawn emacs . spawn firefox
     _hc silent new_attr bool my_not_first_autostart true
 fi
 
