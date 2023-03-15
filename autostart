@@ -48,9 +48,6 @@ EOF
 # Initialization {{{1
 _hc emit_hook reload
 
-## TODO Colors
-my_background='#000000'
-
 ### source: (https://github.com/ypnos/hlwm)
 ## clearing bindings and rules
 for action in keyunbind mouseunbind unrule ; do
@@ -62,25 +59,51 @@ _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 
 ## removes all empty tags on reload
 ### source: (https://github.com/t-wissmann/dotfiles)
-#### TODO try to use 'remove' instead of 'merge_tags' or check for regular tags and use
-#### 'merge_tags' on the previously and now empty added ones
+#### TODO use 'merge_tags' on empty tags created for temporary usage
 if _autostart_reload; then
+    # _hc chain . lock \
+    #	. foreach T tags.by-name \
+    #	    sprintf ATTR_original_tag '%c.my_original_tag' T and \
+    #	       - ! compare ATTR_original_tag = true \
+    #	       # - sprintf ATTR_client_count '%c.client_count' T and \
+    #	       #    + compare ATTR_client_count = 0 \
+    #		  + sprintf ATTR_NAME '%c.name' T \
+    #		    substitute NAME ATTR_NAME merge_tag NAME
+
+    # _hc chain . lock \
+    #	. foreach T tags.by-name \
+    #	    sprintf ATTR_client_count '%c.client_count' T and \
+    #	       , compare ATTR_client_count = 0 \
+    #	       , or \
+    #		  ,, silent sprintf ATTR_original_tag '%c.my_original_tag' T and \
+    #		     - compare ATTR_original_tag = true \
+    #		  ,, sprintf ATTR_NAME '%c.name' T and \
+    #		    + substitute T_NAME ATTR_NAME use T_NAME \
+    #		    + foreach R tags.focus.tiling.root --recursive remove \
+    #		    + try use_previous \
+    #		  -  sprintf ATTR_NAME '%c.name' T \
+    #		       substitute NAME ATTR_NAME merge_tag NAME \
+    #		       . unlock
     _hc chain . lock \
 	. foreach T tags.by-name \
 	    sprintf ATTR_client_count '%c.client_count' T and \
 	       , compare ATTR_client_count = 0 \
-	       , sprintf ATTR_NAME '%c.name' T and \
-		    + substitute T_NAME ATTR_NAME use T_NAME \
-		    + foreach R tags.focus.tiling.root --recursive remove \
-		    + try use_previous \
+	       , sprintf ATTR_NAME '%c.name' T or \
+		   ,, silent sprintf ATTR_original_tag '%c.my_original_tag' T and \
+			+ substitute T_NAME ATTR_NAME use T_NAME \
+			+ foreach R tags.focus.tiling.root --recursive remove \
+			+ try use_previous \
+		   ,, substitute NAME ATTR_NAME merge_tag NAME \
 	. unlock
-	# try silent substitute NAME ATTR_NAME merge_tag NAME
 fi
 # }}}1
 
 # Variables {{{1
 ## Modkeys
 Hyper=Mod3
+
+## TODO Colors
+xrdb_colors=()
 
 ## config dir
 hc_dir="$XDG_CONFIG_HOME/herbstluftwm"
@@ -134,7 +157,10 @@ unset upper_char_prefix_mon_name
 #### HACK
 _hc silent rename default "${tag_names[0]}" || true
 for i in "${!tag_names[@]}" ; do
-    _hc add "${tag_names[$i]}"
+    if ! _hc silent attr tags.by-name."${tag_names[$i]}" ; then
+	_hc add "${tag_names[$i]}"
+	_hc new_attr bool tags."${tag_names[$i]}".my_original_tag true
+    fi
     key="${tag_keys[$i]}"
     if [ -n "$key" ] ; then
 	_bind "Super+$key" or \
@@ -150,13 +176,14 @@ for i in "${!tag_names[@]}" ; do
 done
 
 # Statically define which tag should be send to which monitor
-lock_in_monitor_the_tags() {
+### source: (https://github.com/mendess/spell-book/runes)
+_lock_in_monitor_the_tags() {
     local mon="$1"
     shift
     for t in "$@"; do
-	herbstclient chain \
-		     , silent new_attr string tags."$t".my_monitor \
-		     , silent set_attr tags."$t".my_monitor "$mon"
+	_hc chain \
+	     , silent new_attr string tags."$t".my_monitor \
+	     , silent set_attr tags."$t".my_monitor "$mon"
     done
 }
 # Lock tags to specific monitors. e.g
@@ -165,7 +192,7 @@ lock_in_monitor_the_tags() {
 for ((m=0;m<"${monitor_count}";m++)); do
     for t in "${!tag_names[@]}"; do
 	if (( t % monitor_count == 0 )); then
-	    lock_in_monitor_the_tags "$m" "$((t+m))"
+	    _lock_in_monitor_the_tags "$m" "$((t+m))"
 	fi
     done
 done
@@ -191,59 +218,63 @@ fi
 
 # Keybindings {{{1
 # mouse {{{2
-_hc mousebind Super-Button1 move
-_hc mousebind Super-Button2 zoom
-_hc mousebind Super-Button3 resize
+_hc mousebind Super+Button1 move
+_hc mousebind Super+Button2 zoom
+_hc mousebind Super+Button3 resize
 # }}}2
 
 # top level commands {{{2
-_bind $Hyper-Alt-q   spawn sudo systemctl poweroff
-_bind $Hyper-Alt-l   quit
-_bind Alt-F5         quit
-_bind $Hyper-Alt-r   reload
-_bind Alt-F9         reload
+_bind $Hyper+Alt+q   spawn shutdown
+_bind $Hyper+Alt+l   quit
+_bind Alt+F5         quit
+_bind $Hyper+Alt+r   reload
+_bind Alt+F9         reload
 # }}}2
 
 # launching programs {{{2
 ## general
-_bind Super-Return       spawn "${TERMINAL:-xterm}"
-_bind Super-Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
-_bind $Hyper-Return      spawn rofi -show window -modi window -show-icons #Client list
-_bind $Hyper-Scroll_Lock spawn slock
+_bind Super+Return       spawn "${TERMINAL:-xterm}"
+_bind Super+Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
+_bind $Hyper+Return      spawn rofi -show window -modi window -show-icons #Client list
+_bind $Hyper+Scroll_Lock spawn slock
 ## specific
-_bind $Hyper-Super-w     spawn firefox
-_bind $Hyper-Super-e     spawn emacs
-_bind $Hyper-Super-m     spawn thunar
-_bind $Hyper-Super-r     spawn "$hc_dir/dmenu_run_hlwm_v2"
+_bind Ctrl+Super+Prior       spawn "pactl set-sink-volume @DEFAULT_SINK@ +1000"
+_bind Ctrl+Super+Next        spawn "pactl set-sink-volume @DEFAULT_SINK@ -1000"
+_bind Ctrl+Super+Pause       spawn "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+_bind Ctrl+Super+Scroll_Lock spawn "pactl set-source-mute @DEFAULT_SINK@ toggle"
+_bind $Hyper+Super+w     spawn firefox
+_bind $Hyper+Super+e     spawn emacs
+_bind $Hyper+Super+m     spawn thunar
+_bind $Hyper+Super+r     spawn "$hc_dir/dmenu_run_hlwm_v2"
 # }}}2
 
 # motions {{{2
 ## focus {{{3
 ### clients
-_bind Super-h	   silent  focus left  --level=all
-_bind Super-j      silent  focus down  --level=all
-_bind Super-k      silent  focus up    --level=all
-_bind Super-l      silent  focus right --level=all
-_bind Super-Left   silent  focus_edge left
-_bind Super-Down   silent  focus_edge down
-_bind Super-Up     silent  focus_edge up
-_bind Super-Right  silent  focus_edge right
+_bind Super+h	   silent  focus left  --level=all
+_bind Super+j      silent  focus down  --level=all
+_bind Super+k      silent  focus up    --level=all
+_bind Super+l      silent  focus right --level=all
+_bind Super+Left   silent  focus_edge left
+_bind Super+Down   silent  focus_edge down
+_bind Super+Up     silent  focus_edge up
+_bind Super+Right  silent  focus_edge right
 ### visible clients only
-_bind $Hyper-h	   silent  focus left  -i
-_bind $Hyper-j	   silent  focus down  -i
-_bind $Hyper-k	   silent  focus up    -i
-_bind $Hyper-l	   silent  focus right -i
+_bind $Hyper+h	   silent  focus left  -i
+_bind $Hyper+j	   silent  focus down  -i
+_bind $Hyper+k	   silent  focus up    -i
+_bind $Hyper+l	   silent  focus right -i
 ### monitors
-_bind Super-y	   silent  focus_monitor -l
-_bind Super-u	   silent  focus_monitor -d
-_bind Super-i	   silent  focus_monitor -u
-_bind Super-o	   silent  focus_monitor -r
+_bind Super+y	   silent  focus_monitor -l
+_bind Super+u	   silent  focus_monitor -d
+_bind Super+i	   silent  focus_monitor -u
+_bind Super+o	   silent  focus_monitor -r
 ### focus previous tag
-_bind Super-BackSpace  use_previous
+_bind Super+BackSpace  use_previous
 ### source: (https://github.com/t-wissmann/dotfiles)
 ## jumps to urgent either from a client or a frame
 ## next call will try to return to previous client if applicable
-_bind $Hyper-i  silent or \
+_bind $Hyper+i  silent or \
     : substitute WINID clients.focus.winid and \
 	. jumpto urgent \
 	. try new_attr string clients.my_oldfocus \
@@ -258,22 +289,22 @@ _bind $Hyper-i  silent or \
 
 ## cycle {{{3
 ### clients and frames
-_bind Super-Tab       cycle_all +1
-_bind Super-Shift-Tab cycle_all -1
+_bind Super+Tab       cycle_all +1
+_bind Super+Shift+Tab cycle_all -1
 ### clients
-_bind Super-b	      cycle +1
-_bind Super-Shift-b   cycle -1
+_bind Super+b	      cycle +1
+_bind Super+Shift+b   cycle -1
 ### frames
-_bind Super-v	      cycle_frame +1
-_bind Super-Shift-v   cycle_frame -1
+_bind Super+v	      cycle_frame +1
+_bind Super+Shift+v   cycle_frame -1
 ### tags
-_bind Super-period    use_index +"$monitor_count"
-_bind Super-comma     use_index -"$monitor_count"
-_bind $Hyper-period   use_index +1 --skip-visible
-_bind $Hyper-comma    use_index -1 --skip-visible
+_bind Super+period    use_index +"$monitor_count"
+_bind Super+comma     use_index -"$monitor_count"
+_bind $Hyper+period   use_index +1 --skip-visible
+_bind $Hyper+comma    use_index -1 --skip-visible
 ### monitors
-_bind Super-c         cycle_monitor +1
-_bind Super-Shift-c   cycle_monitor -1
+_bind Super+c         cycle_monitor +1
+_bind Super+Shift+c   cycle_monitor -1
 ## }}}3
 
 ## shifting {{{3
@@ -287,52 +318,52 @@ _shift_or_detach() {
 		     + compare tags.focus.curframe_wcount gt 1 \
 		     + split "$dir" 0.5 + shift "$2"
 }
-_shift_or_detach $Hyper-Shift-h left
-_shift_or_detach $Hyper-Shift-j down
-_shift_or_detach $Hyper-Shift-k up
-_shift_or_detach $Hyper-Shift-l right
+_shift_or_detach $Hyper+Shift+h left
+_shift_or_detach $Hyper+Shift+j down
+_shift_or_detach $Hyper+Shift+k up
+_shift_or_detach $Hyper+Shift+l right
 
 ### clients to edge of tag
-_bind $Hyper-Shift-Left   shift_edge left
-_bind $Hyper-Shift-Down   shift_edge down
-_bind $Hyper-Shift-Up     shift_edge up
-_bind $Hyper-Shift-Right  shift_edge right
+_bind $Hyper+Shift+Left   shift_edge left
+_bind $Hyper+Shift+Down   shift_edge down
+_bind $Hyper+Shift+Up     shift_edge up
+_bind $Hyper+Shift+Right  shift_edge right
 
 ### shift clients to monitor
 for (( m=0; m<"${monitor_count}";m++ )) ; do
-    #### ex. Hyper-Shift-F1  shift_to_monitor 0   focus_monitor 0
+    #### ex. Hyper+Shift+F1  shift_to_monitor 0   focus_monitor 0
     _bind "$Hyper+F$((m+1))" chain , shift_to_monitor "${m}" , focus_monitor "${m}"
 done
 
 ### clients to Depot tag for later visualization
 ### TODO make clients return to original tags/frames
-_bind $Hyper-Delete chain . add Depot . move Depot
-_bind $Hyper-End    try silent use Depot
-_bind $Hyper-Insert try silent merge_tag Depot
+_bind $Hyper+Delete chain . add Depot . move Depot
+_bind $Hyper+End    try silent use Depot
+_bind $Hyper+Insert try silent merge_tag Depot
 ## }}}3
 
 ## resizing {{{3
 ### frames and floating clients
 resizestep=0.01
-_bind $Hyper-Left   resize left  +"$resizestep"
-_bind $Hyper-Down   resize down  +"$resizestep"
-_bind $Hyper-Up     resize up	 +"$resizestep"
-_bind $Hyper-Right  resize right +"$resizestep"
+_bind $Hyper+Left   resize left  +"$resizestep"
+_bind $Hyper+Down   resize down  +"$resizestep"
+_bind $Hyper+Up     resize up	 +"$resizestep"
+_bind $Hyper+Right  resize right +"$resizestep"
 ## }}}3
 
 ## rotate/mirror {{{3
-_bind $Hyper-Ctrl-r	     rotate
-_bind $Hyper-Ctrl-backslash  mirror vertical
-_bind $Hyper-Ctrl-plus	     mirror both
-_bind $Hyper-Ctrl-minus	     mirror horizontal
+_bind $Hyper+Ctrl+r	     rotate
+_bind $Hyper+Ctrl+backslash  mirror vertical
+_bind $Hyper+Ctrl+plus	     mirror both
+_bind $Hyper+Ctrl+minus	     mirror horizontal
 ## }}}3
 
 ## close/remove {{{3
-_bind Super-q	      close_or_remove
-_bind $Hyper-Shift-x  remove
+_bind Super+q	      close_or_remove
+_bind $Hyper+Shift+x  remove
 #### source: (https://github.com/t-wissmann/dotfiles)
 ### try to close the window, if it is ignored for three times, kill it.
-_bind $Hyper-q and \
+_bind $Hyper+q and \
     , close_and_remove \
     , try silent new_attr int clients.focus.my_close_count 0 \
     , set_attr clients.focus.my_close_count '+=1' \
@@ -343,7 +374,7 @@ _bind $Hyper-q and \
     , substitute WIN clients.focus.winid spawn xkill -id WIN
 
 ### on the focused frame, close all but focused client
-_bind $Hyper-Shift-s chain \
+_bind $Hyper+Shift+s chain \
     . lock \
     . try silent substitute TAG tags.focus.name \
       substitute FRAME clients.focus.parent_frame.index \
@@ -357,7 +388,7 @@ _bind $Hyper-Shift-s chain \
     . unlock
 
 ### on the focused tag, close all but the focused frame
-_bind $Hyper-Ctrl-s chain \
+_bind $Hyper+Ctrl+s chain \
     . lock \
     . try silent substitute TAG tags.focus.name \
       substitute FRAME clients.focus.parent_frame.index \
@@ -369,7 +400,7 @@ _bind $Hyper-Ctrl-s chain \
     . unlock
 
 ### excluding focused tag close all other clients and frames
-_bind $Hyper-Ctrl-Shift-s chain \
+_bind $Hyper+Ctrl+Shift+s chain \
       . lock \
       . try silent substitute TAG tags.focus.name and \
 	  - foreach T tags.by-name. \
@@ -390,25 +421,25 @@ _bind $Hyper-Ctrl-Shift-s chain \
 
 # layouting {{{2
 ## Frames
-_bind $Hyper-Ctrl-h chain , split left    0.5 , focus left
-_bind $Hyper-Ctrl-j chain , split bottom  0.5 , focus down
-_bind $Hyper-Ctrl-k chain , split top     0.5 , focus up
-_bind $Hyper-Ctrl-l chain , split right   0.5 , focus right
-_bind $Hyper-Ctrl-space split explode
+_bind $Hyper+Ctrl+h chain , split left    0.5 , focus left
+_bind $Hyper+Ctrl+j chain , split bottom  0.5 , focus down
+_bind $Hyper+Ctrl+k chain , split top     0.5 , focus up
+_bind $Hyper+Ctrl+l chain , split right   0.5 , focus right
+_bind $Hyper+Ctrl+space split explode
 #### source: (https://github.com/t-wissmann/dotfiles)
 ### changes frame layout from 1/2 2/3 1/3 of tag size
-_bind $Hyper-Ctrl-ccedilla cycle_value tags.focus.tiling.root.fraction 0.5 0.6666 0.3333
+_bind $Hyper+Ctrl+ccedilla cycle_value tags.focus.tiling.root.fraction 0.5 0.6666 0.3333
 
 ## Clients
-_bind $Hyper-f floating toggle
-_bind $Hyper-z fullscreen toggle
-_bind $Hyper-p pseudotile toggle
-_bind $Hyper-Shift-f set_attr clients.focus.floating toggle
-_bind $Hyper-Shift-d set_attr clients.focus.decorated toggle
-_bind $Hyper-Shift-n set_attr clients.focus.minimized true
-_bind $Hyper-Shift-m jumpto last-minimized
+_bind $Hyper+f floating toggle
+_bind $Hyper+z fullscreen toggle
+_bind $Hyper+p pseudotile toggle
+_bind $Hyper+Shift+f set_attr clients.focus.floating toggle
+_bind $Hyper+Shift+d set_attr clients.focus.decorated toggle
+_bind $Hyper+Shift+n set_attr clients.focus.minimized true
+_bind $Hyper+Shift+m jumpto last-minimized
 ## unminimized all clients
-_bind $Hyper-Shift-u \
+_bind $Hyper+Shift+u \
      foreach CLIENT clients. \
 	sprintf MINATT "%c.minimized" CLIENT and \
 	, compare MINATT "=" "true" \
@@ -416,7 +447,7 @@ _bind $Hyper-Shift-u \
 
 ##  layout cycling. skipping grid when clients=2 (grid=horizontal)
 #### TODO check dimensions on curwindow to ignore silly layouts
-_bind $Hyper-minus \
+_bind $Hyper+minus \
    or , and ,, compare tags.focus.curframe_wcount = 2 \
 	    ,, cycle_layout +1 vertical horizontal max \
       , cycle_layout +1
@@ -430,75 +461,76 @@ _kavs() { # $1 keybind $2 attribute $3 values $4 string
 		, sprintf BODY "$4" "$2" spawn notify-send BODY;}
 
 ## frames
-_kavs Super-Ctrl-d	settings.show_frame_decorations \
+_kavs Super+Ctrl+d	settings.show_frame_decorations \
 			"none nonempty if_multiple if_empty focused focused_if_multiple all" \
 			"Frame decorations: %s"
-_kavs Super-Ctrl-s	settings.smart_frame_surroundings "hide_all hide_gaps off" \
+_kavs Super+Ctrl+s	settings.smart_frame_surroundings "hide_all hide_gaps off" \
 			"Smart frame surroundings: %s"
-_kavs Super-Ctrl-g	settings.frame_gap "${steps[*]}" \
+_kavs Super+Ctrl+g	settings.frame_gap "${steps[*]}" \
 			"Frame gap: %s"
-_kavs Super-Ctrl-p	settings.frame_padding "${steps[*]}" \
+_kavs Super+Ctrl+p	settings.frame_padding "${steps[*]}" \
 			"Frame padding: %s"
 ### frame_border_inner_width = 0 (default) and MUST be less than frame_border_width (below)
-_kavs Super-Ctrl-b	settings.frame_border_width "${steps[*]:1}" \
+_kavs Super+Ctrl+b	settings.frame_border_width "${steps[*]:1}" \
 			"Frame border width: %s"
 ## opacity
-_kavs Super-Ctrl-o	 settings.frame_active_opacity "${opac_steps[*]}" \
+_kavs Super+Ctrl+o	 settings.frame_active_opacity "${opac_steps[*]}" \
 			"Frame active opacity: %s"
-_kavs Super-Ctrl-Shift-o settings.frame_normal_opacity "${opac_steps[*]}" \
+_kavs Super+Ctrl+Shift+o settings.frame_normal_opacity "${opac_steps[*]}" \
 			"Frame normal opacity: %s"
 
 ## windows
-_kavs Super-Shift-g	settings.window_gap "${steps[*]}" \
+_kavs Super+Shift+g	settings.window_gap "${steps[*]}" \
 			"Window gap: %s" settings.window_gap \
 
 ## title
-_kavs Super-Shift-t	theme.title_when \
+_kavs Super+Shift+t	theme.title_when \
 			"never one_tab multiple_tabs always" \
 			"Theme title when: %s"
 
 ## border
-_kavs Super-Shift-b	theme.border_width "${seq_steps[*]:3:10}" \
+_kavs Super+Shift+b	theme.border_width "${seq_steps[*]:3:10}" \
 			"Theme border gap: %s"
 
 ## }}}2
 
 # }}}1
 
+
 # Colors {{{1
 ## TODO major overhaul is necessary
 # title
-_attr theme.title_color '#ffffff'
-_attr theme.normal.title_color '#c6c8d1'
+_attr theme.title_color        "${xrdb_colors[]:-#ffffff}"
+_attr theme.normal.title_color "${xrdb_colors[]:-#c6c8d1}"
 
 # frame
-_set frame_bg_active_color '#ffa62323'
-_set frame_bg_normal_color '#000000'
-_set frame_border_active_color '#ff4000'
-_set frame_border_normal_color "${my_background:-#00000000}"
+_set frame_bg_active_color     "${xrdb_colors[]:-#ffa623}"23
+_set frame_bg_normal_color     "${xrdb_colors[15]:-#000000}"
+_set frame_border_active_color "${xrdb_colors[]:-#ff4000}"
+_set frame_border_normal_color "${xrdb_colors[15]:-#000000}"00
 _set frame_border_inner_color black
 
 # active, normal, urgent
-_attr theme.active.color "#4db8ff"
-_attr theme.active.inner_color '#4db8ff'
-_attr theme.normal.color '#00000000'
-_attr theme.normal.inner_color '#00000000'
-_attr theme.urgent.color '#e27878'
-_attr theme.urgent.inner_color '#ffa623'
+_attr theme.active.color       "${xrdb_colors[]:-#4db8ff}"
+_attr theme.active.inner_color "${xrdb_colors[]:-#4db8ff}"
+_attr theme.normal.color       "${xrdb_colors[]:-#000000}"00
+_attr theme.normal.inner_color "${xrdb_colors[]:-#000000}"00
+_attr theme.urgent.color       "${xrdb_colors[]:-#e27878}"
+_attr theme.urgent.inner_color "${xrdb_colors[]:-#ffa623}"
 # copy inner color to outer_color
 for state in active urgent normal ; do
    _hc substitute C theme.${state}.inner_color \
 	      attr theme.${state}.outer_color C
 done
-_attr theme.floating.outer_color '#7759b4'
+_attr theme.floating.outer_color "${xrdb_colors[]:-#7759b4}"
 
 # tab
-_attr theme.tab_color '#3f83a6'
-_attr theme.active.tab_color '#2d539e'
-_attr theme.active.tab_outer_color '#84a0c6'
-_attr theme.active.tab_title_color '#ababab'
+_attr theme.tab_color              "${xrdb_colors[]:-#3f83a6}"
+_attr theme.active.tab_color       "${xrdb_colors[]:-#2d539e}"
+_attr theme.active.tab_outer_color "${xrdb_colors[]:-#84a0c6}"
+_attr theme.active.tab_title_color "${xrdb_colors[]:-#ababab}"
 
-_attr theme.background_color "${background:-#000000}"
+_attr theme.background_color "${xrdb_colors[15]:-#000000}"
 
 # }}}1
 
@@ -544,31 +576,31 @@ _attr theme.title_depth 4  # space below the title's baseline
 ## border
 _attr theme.border_width "${seq_steps[3]}"  # must have diff >=1 from inner_width
 _attr theme.inner_width  "${seq_steps[2]}"  # check previous note
-_attr theme.inner_color "${background:-#000000}" # should match background color
+_attr theme.inner_color  "${xrdb_colors[15]:-#000000}" # should match background color
 
 ## floating windows
 _attr theme.floating.border_width "${seq_steps[6]}"
 _attr theme.floating.outer_width  "${seq_steps[2]}"
 
 ############ TODO
-# _attr theme.background_color = #000000
+# _attr theme.background_color = "${xrdb_colors[15]:-#000000}"
 # _attr theme.border_width = 3
-# _attr theme.color = #000000
-# _attr theme.inner_color = #000000
+# _attr theme.color = "${xrdb_colors[15]:-#000000}"
+# _attr theme.inner_color =
 # _attr theme.inner_width = 2
-# _attr theme.outer_color = #000000
+# _attr theme.outer_color = "${xrdb_colors[15]:-#000000}"
 # _attr theme.outer_width = 0
 # _attr theme.padding_bottom = 0
 # _attr theme.padding_left = 0
 # _attr theme.padding_right = 0
 # _attr theme.padding_top = 0
-# _attr theme.tab_color = "#3f83a6"
+# _attr theme.tab_color = "${xrdb_colors[]:-#3f83a6}"
 # _attr theme.tab_outer_color = ""
 # _attr theme.tab_outer_width = ""
 # _attr theme.tab_title_color = ""
 # _attr theme.tight_decoration = false
 # _attr theme.title_align = left
-# _attr theme.title_color = #ffffff
+# _attr theme.title_color = "${xrdb_colors[]:-#ffffff}"
 # _attr theme.title_depth = 4
 # _attr theme.title_font = SudoUI Nerd Font:size=13
 # _attr theme.title_height = 14
@@ -581,12 +613,12 @@ _attr theme.floating.outer_width  "${seq_steps[2]}"
 
 
 # Theme Minimal
-_attr theme.minimal.title_color '#ffffff'
+_attr theme.minimal.title_color "${xrdb_colors[]:-#ffffff}"
 _attr theme.minimal.title_depth 4
 _attr theme.minimal.title_align 'center'
 _attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
-_attr theme.minimal.tab_color '#3f83a6'
-_attr theme.minimal.color "${color10:-#4db8ff}"
+_attr theme.minimal.tab_color "${xrdb_colors[]:-#3f83a6}"
+_attr theme.minimal.color "${xrdb_colors[]:-#4db8ff}"
 _attr theme.minimal.title_when multiple_tabs
 _attr theme.minimal.title_height 14
 #}}}1
