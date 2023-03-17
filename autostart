@@ -296,10 +296,15 @@ _shift_or_detach() {
 		     + compare tags.focus.curframe_wcount gt 1 \
 		     + split "$dir" 0.5 + shift "$2"
 }
-_shift_or_detach $Hyper+Shift+h left
-_shift_or_detach $Hyper+Shift+j down
-_shift_or_detach $Hyper+Shift+k up
-_shift_or_detach $Hyper+Shift+l right
+_shift_or_detach Super+Shift+h left
+_shift_or_detach Super+Shift+j down
+_shift_or_detach Super+Shift+k up
+_shift_or_detach Super+Shift+l right
+
+_bind $Hyper+Shift+h or . shift left  . chain , lock , shift_to_monitor -l , focus_monitor -l , unlock
+_bind $Hyper+Shift+j or . shift down  . chain , lock , shift_to_monitor -d , focus_monitor -d , unlock
+_bind $Hyper+Shift+k or . shift up    . chain , lock , shift_to_monitor -u , focus_monitor -u , unlock
+_bind $Hyper+Shift+l or . shift right . chain , lock , shift_to_monitor -r , focus_monitor -r , unlock
 
 ### clients to edge of tag
 _bind $Hyper+Shift+Left   shift_edge left
