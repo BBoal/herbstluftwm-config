@@ -28,7 +28,7 @@ _attr() { _hc attr "$@";}
 _rule() { _hc rule "$@";}
 _autostart_reload() { _hc silent get_attr my_not_first_autostart;}
 ## Helper function do organize workspaces
-_arrange_workspace() { t=$1
+_arrange_workspace() { local t=$1
 		       cat <<-EOF
 herbstclient chain , lock \
 , set swap_monitors_to_get_tag true \\
@@ -57,44 +57,22 @@ done
 ## resets active,floating,fullscreen,minimal,normal,tiling and urgent
 _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
 
-## removes all empty tags on reload
+## regular tags have the my_original tag and merge_tag is a newbie
+## the others, they remove all empty tags on reload
 ### source: (https://github.com/t-wissmann/dotfiles)
-#### TODO use 'merge_tags' on empty tags created for temporary usage
 if _autostart_reload; then
-    # _hc chain . lock \
-    #	. foreach T tags.by-name \
-    #	    sprintf ATTR_original_tag '%c.my_original_tag' T and \
-    #	       - ! compare ATTR_original_tag = true \
-    #	       # - sprintf ATTR_client_count '%c.client_count' T and \
-    #	       #    + compare ATTR_client_count = 0 \
-    #		  + sprintf ATTR_NAME '%c.name' T \
-    #		    substitute NAME ATTR_NAME merge_tag NAME
-
-    # _hc chain . lock \
-    #	. foreach T tags.by-name \
-    #	    sprintf ATTR_client_count '%c.client_count' T and \
-    #	       , compare ATTR_client_count = 0 \
-    #	       , or \
-    #		  ,, silent sprintf ATTR_original_tag '%c.my_original_tag' T and \
-    #		     - compare ATTR_original_tag = true \
-    #		  ,, sprintf ATTR_NAME '%c.name' T and \
-    #		    + substitute T_NAME ATTR_NAME use T_NAME \
-    #		    + foreach R tags.focus.tiling.root --recursive remove \
-    #		    + try use_previous \
-    #		  -  sprintf ATTR_NAME '%c.name' T \
-    #		       substitute NAME ATTR_NAME merge_tag NAME \
-    #		       . unlock
-    _hc chain . lock \
-	. foreach T tags.by-name \
-	    sprintf ATTR_client_count '%c.client_count' T and \
-	       , compare ATTR_client_count = 0 \
-	       , sprintf ATTR_NAME '%c.name' T or \
-		   ,, silent sprintf ATTR_original_tag '%c.my_original_tag' T and \
-			+ substitute T_NAME ATTR_NAME use T_NAME \
-			+ foreach R tags.focus.tiling.root --recursive remove \
-			+ try use_previous \
-		   ,, substitute NAME ATTR_NAME merge_tag NAME \
-	. unlock
+   _hc chain . lock \
+       . foreach T tags.by-name \
+	   sprintf ATTR_client_count '%c.client_count' T and \
+	      , compare ATTR_client_count = 0 \
+	      , sprintf ATTR_NAME '%c.name' T or \
+		 ,, silent sprintf ATTR_original_tag '%c.my_original_tag' T and \
+		     + compare ATTR_original_tag = true \
+		     + substitute T_NAME ATTR_NAME use T_NAME \
+		     + foreach R tags.focus.tiling.root --recursive remove \
+		     + try use_previous \
+		 ,, substitute NAME ATTR_NAME merge_tag NAME \
+       . unlock
 fi
 # }}}1
 
@@ -131,7 +109,7 @@ done
 unset prefix_mon_name char_prefix_mon_name
 
 ### source: (https://github.com/t-wissmann/dotfiles)
-## TODO implement theme/colors related cycle_values in sxhkd
+## TODO implement theme/colors related cycle_values
 seq_steps=( $(seq 0 24) )
 steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
 		     $(seq 25 -4 13) $(seq 9 -2 1) )
@@ -154,12 +132,11 @@ done
 unset upper_char_prefix_mon_name
 
 ## defining and assigning tags to keys
-#### HACK
 _hc silent rename default "${tag_names[0]}" || true
 for i in "${!tag_names[@]}" ; do
     if ! _hc silent attr tags.by-name."${tag_names[$i]}" ; then
-	_hc add "${tag_names[$i]}"
-	_hc new_attr bool tags."${tag_names[$i]}".my_original_tag true
+	 _hc add "${tag_names[$i]}"
+	 _hc new_attr bool tags.by-name."${tag_names[${i}]}".my_original_tag true
     fi
     key="${tag_keys[$i]}"
     if [ -n "$key" ] ; then
@@ -172,6 +149,7 @@ for i in "${!tag_names[@]}" ; do
 	_bind "$Hyper+Shift+$key" chain . lock . move_index "$i" \
 	      . silent substitute M tags."$i".my_monitor focus_monitor M \
 	      . use_index "$i" . unlock
+	_bind "$Hyper+Shift+Ctrl+$key" spawn "${hc_dir}"/_move_frame_with_clients "${tag_names[$i]}"
     fi
 done
 
@@ -233,19 +211,19 @@ _bind Alt+F9         reload
 
 # launching programs {{{2
 ## general
-_bind Super+Return       spawn "${TERMINAL:-xterm}"
-_bind Super+Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
-_bind $Hyper+Return      spawn rofi -show window -modi window -show-icons #Client list
-_bind $Hyper+Scroll_Lock spawn slock
+_bind Super+Return           spawn "${TERMINAL:-xterm}"
+_bind Super+Delete           spawn xterm -e "$HOME/scripts/tm" #TMUX
+_bind $Hyper+Return          spawn rofi -show window -modi window -show-icons #Client list
+_bind $Hyper+Scroll_Lock     spawn slock
 ## specific
 _bind Ctrl+Super+Prior       spawn "pactl set-sink-volume @DEFAULT_SINK@ +1000"
 _bind Ctrl+Super+Next        spawn "pactl set-sink-volume @DEFAULT_SINK@ -1000"
 _bind Ctrl+Super+Pause       spawn "pactl set-sink-mute @DEFAULT_SINK@ toggle"
 _bind Ctrl+Super+Scroll_Lock spawn "pactl set-source-mute @DEFAULT_SINK@ toggle"
-_bind $Hyper+Super+w     spawn firefox
-_bind $Hyper+Super+e     spawn emacs
-_bind $Hyper+Super+m     spawn thunar
-_bind $Hyper+Super+r     spawn "$hc_dir/dmenu_run_hlwm_v2"
+_bind $Hyper+Super+w         spawn firefox
+_bind $Hyper+Super+e         spawn emacs
+_bind $Hyper+Super+m         spawn thunar
+_bind $Hyper+Super+r         spawn "$hc_dir/dmenu_run_hlwm_v2"
 # }}}2
 
 # motions {{{2
@@ -259,11 +237,11 @@ _bind Super+Left   silent  focus_edge left
 _bind Super+Down   silent  focus_edge down
 _bind Super+Up     silent  focus_edge up
 _bind Super+Right  silent  focus_edge right
-### visible clients only
-_bind $Hyper+h	   silent  focus left  -i
-_bind $Hyper+j	   silent  focus down  -i
-_bind $Hyper+k	   silent  focus up    -i
-_bind $Hyper+l	   silent  focus right -i
+### visible clients/monitors only
+_bind $Hyper+h	   silent  or , focus left  -i , focus_monitor -l
+_bind $Hyper+j	   silent  or , focus down  -i , focus_monitor -d
+_bind $Hyper+k	   silent  or , focus up    -i , focus_monitor -u
+_bind $Hyper+l	   silent  or , focus right -i , focus_monitor -r
 ### monitors
 _bind Super+y	   silent  focus_monitor -l
 _bind Super+u	   silent  focus_monitor -d
@@ -337,6 +315,7 @@ done
 
 ### clients to Depot tag for later visualization
 ### TODO make clients return to original tags/frames
+### look at urgent snippet for inspiration
 _bind $Hyper+Delete chain . add Depot . move Depot
 _bind $Hyper+End    try silent use Depot
 _bind $Hyper+Insert try silent merge_tag Depot
@@ -446,7 +425,6 @@ _bind $Hyper+Shift+u \
 	, set_attr MINATT false
 
 ##  layout cycling. skipping grid when clients=2 (grid=horizontal)
-#### TODO check dimensions on curwindow to ignore silly layouts
 _bind $Hyper+minus \
    or , and ,, compare tags.focus.curframe_wcount = 2 \
 	    ,, cycle_layout +1 vertical horizontal max \
@@ -500,35 +478,35 @@ _kavs Super+Shift+b	theme.border_width "${seq_steps[*]:3:10}" \
 # Colors {{{1
 ## TODO major overhaul is necessary
 # title
-_attr theme.title_color        "${xrdb_colors[]:-#ffffff}"
-_attr theme.normal.title_color "${xrdb_colors[]:-#c6c8d1}"
+_attr theme.title_color        "${xrdb_colors[1]:-#ffffff}"
+_attr theme.normal.title_color "${xrdb_colors[1]:-#c6c8d1}"
 
 # frame
-_set frame_bg_active_color     "${xrdb_colors[]:-#ffa623}"23
+_set frame_bg_active_color     "${xrdb_colors[1]:-#ffa623}""23"
 _set frame_bg_normal_color     "${xrdb_colors[15]:-#000000}"
-_set frame_border_active_color "${xrdb_colors[]:-#ff4000}"
-_set frame_border_normal_color "${xrdb_colors[15]:-#000000}"00
+_set frame_border_active_color "${xrdb_colors[1]:-#ff4000}"
+_set frame_border_normal_color "${xrdb_colors[15]:-#000000}""00"
 _set frame_border_inner_color black
 
 # active, normal, urgent
-_attr theme.active.color       "${xrdb_colors[]:-#4db8ff}"
-_attr theme.active.inner_color "${xrdb_colors[]:-#4db8ff}"
-_attr theme.normal.color       "${xrdb_colors[]:-#000000}"00
-_attr theme.normal.inner_color "${xrdb_colors[]:-#000000}"00
-_attr theme.urgent.color       "${xrdb_colors[]:-#e27878}"
-_attr theme.urgent.inner_color "${xrdb_colors[]:-#ffa623}"
+_attr theme.active.color       "${xrdb_colors[1]:-#4db8ff}"
+_attr theme.active.inner_color "${xrdb_colors[1]:-#4db8ff}"
+_attr theme.normal.color       "${xrdb_colors[1]:-#000000}""00"
+_attr theme.normal.inner_color "${xrdb_colors[1]:-#000000}""00"
+_attr theme.urgent.color       "${xrdb_colors[1]:-#e27878}"
+_attr theme.urgent.inner_color "${xrdb_colors[1]:-#ffa623}"
 # copy inner color to outer_color
 for state in active urgent normal ; do
    _hc substitute C theme.${state}.inner_color \
 	      attr theme.${state}.outer_color C
 done
-_attr theme.floating.outer_color "${xrdb_colors[]:-#7759b4}"
+_attr theme.floating.outer_color "${xrdb_colors[1]:-#7759b4}"
 
 # tab
-_attr theme.tab_color              "${xrdb_colors[]:-#3f83a6}"
-_attr theme.active.tab_color       "${xrdb_colors[]:-#2d539e}"
-_attr theme.active.tab_outer_color "${xrdb_colors[]:-#84a0c6}"
-_attr theme.active.tab_title_color "${xrdb_colors[]:-#ababab}"
+_attr theme.tab_color              "${xrdb_colors[1]:-#3f83a6}"
+_attr theme.active.tab_color       "${xrdb_colors[1]:-#2d539e}"
+_attr theme.active.tab_outer_color "${xrdb_colors[1]:-#84a0c6}"
+_attr theme.active.tab_title_color "${xrdb_colors[1]:-#ababab}"
 
 _attr theme.background_color "${xrdb_colors[15]:-#000000}"
 
@@ -536,6 +514,7 @@ _attr theme.background_color "${xrdb_colors[15]:-#000000}"
 
 # USER Settings {{{1
 ## global
+_set focus_crosses_monitor_boundaries false
 _set show_frame_decorations focused
 _set frame_bg_transparent off
 _set smart_window_surroundings on
@@ -594,13 +573,13 @@ _attr theme.floating.outer_width  "${seq_steps[2]}"
 # _attr theme.padding_left = 0
 # _attr theme.padding_right = 0
 # _attr theme.padding_top = 0
-# _attr theme.tab_color = "${xrdb_colors[]:-#3f83a6}"
+# _attr theme.tab_color = "${xrdb_colors[1]:-#3f83a6}"
 # _attr theme.tab_outer_color = ""
 # _attr theme.tab_outer_width = ""
 # _attr theme.tab_title_color = ""
 # _attr theme.tight_decoration = false
 # _attr theme.title_align = left
-# _attr theme.title_color = "${xrdb_colors[]:-#ffffff}"
+# _attr theme.title_color = "${xrdb_colors[1]:-#ffffff}"
 # _attr theme.title_depth = 4
 # _attr theme.title_font = SudoUI Nerd Font:size=13
 # _attr theme.title_height = 14
@@ -613,12 +592,12 @@ _attr theme.floating.outer_width  "${seq_steps[2]}"
 
 
 # Theme Minimal
-_attr theme.minimal.title_color "${xrdb_colors[]:-#ffffff}"
+_attr theme.minimal.title_color "${xrdb_colors[1]:-#ffffff}"
 _attr theme.minimal.title_depth 4
 _attr theme.minimal.title_align 'center'
 _attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
-_attr theme.minimal.tab_color "${xrdb_colors[]:-#3f83a6}"
-_attr theme.minimal.color "${xrdb_colors[]:-#4db8ff}"
+_attr theme.minimal.tab_color "${xrdb_colors[1]:-#3f83a6}"
+_attr theme.minimal.color "${xrdb_colors[1]:-#4db8ff}"
 _attr theme.minimal.title_when multiple_tabs
 _attr theme.minimal.title_height 14
 #}}}1

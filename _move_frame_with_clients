@@ -1,0 +1,36 @@
+#!/bin/env bash
+_hc() { herbstclient "$@";}
+
+## only argument is destination frame
+dest_frame="$1"
+
+## current client and tag
+present_client=$(_hc attr clients.focus.winid)
+present_tag=$(_hc attr tags.focus.name)
+
+## exit if script is run on an empty frame
+[[ -z "${present_client}" ]] && exit
+
+## getting the id's of the clients in the focused frame
+readarray -t clients_winid_move < <(_hc list_clients --frame=@)
+
+## go to dest frame and split root frame
+_hc lock
+_hc use "${dest_frame}"
+_hc split auto 0.5 ''
+
+## send all clients to newly created frame
+for ((i=0;i<"${#clients_winid_move[@]}";i++)); do
+    _hc apply_tmp_rule "${clients_winid_move[${i}]}" tag="${dest_frame}" index=1
+done
+
+## hack to avoid leaving empty frame where clients were
+_hc use "${present_tag}"
+_hc remove
+
+## refocus present client
+_hc jumpto "${present_client}"
+_hc unlock
+
+## unsetting all used variables
+unset dest_frame present_client present_tag
