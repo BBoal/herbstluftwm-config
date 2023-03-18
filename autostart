@@ -238,6 +238,7 @@ _bind Super+Down   silent focus_edge down
 _bind Super+Up     silent focus_edge up
 _bind Super+Right  silent focus_edge right
 ### visible clients/monitors only
+#### Necessary logic because 'focus_crosses_monitor_boundaries' is set to false
 _bind $Hyper+h	   silent or , focus left  -i , focus_monitor -l
 _bind $Hyper+j	   silent or , focus down  -i , focus_monitor -d
 _bind $Hyper+k	   silent or , focus up    -i , focus_monitor -u
@@ -287,6 +288,10 @@ _bind Super+Shift+c   cycle_monitor -1
 
 ## shifting {{{3
 ### clients and frames
+
+#### Function that detaches focused client to a dedicated frame if, in a multiple
+#### client frame near the monitor's border and shift command is executed in
+#### direction of mentioned border
 _shift_or_detach() {
     dir="$2"
     [[ "$2" == "up" ]] && dir="top"
@@ -301,6 +306,7 @@ _shift_or_detach Super+Shift+j down
 _shift_or_detach Super+Shift+k up
 _shift_or_detach Super+Shift+l right
 
+#### Necessary logic because 'focus_crosses_monitor_boundaries' is set to false
 _bind $Hyper+Shift+h or . shift left  . chain , lock , shift_to_monitor -l , focus_monitor -l , unlock
 _bind $Hyper+Shift+j or . shift down  . chain , lock , shift_to_monitor -d , focus_monitor -d , unlock
 _bind $Hyper+Shift+k or . shift up    . chain , lock , shift_to_monitor -u , focus_monitor -u , unlock
@@ -318,12 +324,35 @@ for (( m=0; m<"${monitor_count}";m++ )) ; do
     _bind "$Hyper+F$((m+1))" chain , shift_to_monitor "${m}" , focus_monitor "${m}"
 done
 
-### clients to Depot tag for later visualization
-### TODO make clients return to original tags/frames
-### look at urgent snippet for inspiration
-_bind $Hyper+Delete chain . add Depot . move Depot
-_bind $Hyper+End    try silent use Depot
-_bind $Hyper+Insert try silent merge_tag Depot
+### clients to 'Depot' tag for later visualization
+### TODO
+_bind $Hyper+Delete chain \
+      . lock \
+      . add Depot \
+      . try silent substitute ATTR_FORMER_TAG clients.focus.tag \
+	   new_attr string clients.focus.my_former_tag ATTR_FORMER_TAG \
+      . move Depot \
+      . unlock
+
+### Shortcut for 'Depot' tag
+_bind $Hyper+End try silent use Depot
+
+### TODO make clients return to original tags
+_bind $Hyper+Insert chain \
+      . lock \
+      . substitute CUR_TAG tags.focus.name chain \
+	  - silent substitute TAG tags.by-name.Depot.name \
+	    foreach CLIENT clients. and \
+	      , sprintf TAG_ATTR "%c.tag" CLIENT compare TAG_ATTR "=" TAG \
+	      , sprintf FORMER_TAG_ATTR "%c.my_former_tag" CLIENT substitute ORIG_TAG FORMER_TAG_ATTR use ORIG_TAG \
+	      , sprintf WINID_ATTR '%c.winid' CLIENT substitute WINID WINID_ATTR and \
+		,, bring WINID \
+		,, use_previous \
+	  - silent and + use Depot + use_previous \
+	  - silent merge_tag Depot \
+	  - use CUR_TAG \
+      . unlock
+
 ## }}}3
 
 ## resizing {{{3
@@ -437,7 +466,7 @@ _bind $Hyper+minus \
 ## }}}2
 
 # customize theme {{{2
-## Helper func to minimize repetition
+## Helper function to minimize repetition
 _kavs() { # $1 keybind $2 attribute $3 values $4 string
 	  # shellcheck disable=SC2086
 	  _bind "$1" and , cycle_value "$2"  $3 \
@@ -478,7 +507,6 @@ _kavs Super+Shift+b	theme.border_width "${u_seq_steps[*]:3:10}" \
 ## }}}2
 
 # }}}1
-
 
 # Colors {{{1
 ## TODO major overhaul is necessary
