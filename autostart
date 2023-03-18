@@ -324,32 +324,31 @@ for (( m=0; m<"${monitor_count}";m++ )) ; do
     _bind "$Hyper+F$((m+1))" chain , shift_to_monitor "${m}" , focus_monitor "${m}"
 done
 
-### clients to 'Depot' tag for later visualization
-### TODO
+### clients to 'DEMO' tag for later visualization
 _bind $Hyper+Delete chain \
       . lock \
-      . add Depot \
+      . add DEMO \
       . try silent substitute ATTR_FORMER_TAG clients.focus.tag \
 	   new_attr string clients.focus.my_former_tag ATTR_FORMER_TAG \
-      . move Depot \
+      . move DEMO \
       . unlock
 
-### Shortcut for 'Depot' tag
-_bind $Hyper+End try silent use Depot
+### Shortcut for 'DEMO' tag
+_bind $Hyper+End try silent use DEMO
 
-### TODO make clients return to original tags
+### Make clients of tag 'DEMO' return to original tags
 _bind $Hyper+Insert chain \
       . lock \
       . substitute CUR_TAG tags.focus.name chain \
-	  - silent substitute TAG tags.by-name.Depot.name \
+	  - silent substitute TAG tags.by-name.DEMO.name \
 	    foreach CLIENT clients. and \
 	      , sprintf TAG_ATTR "%c.tag" CLIENT compare TAG_ATTR "=" TAG \
 	      , sprintf FORMER_TAG_ATTR "%c.my_former_tag" CLIENT substitute ORIG_TAG FORMER_TAG_ATTR use ORIG_TAG \
 	      , sprintf WINID_ATTR '%c.winid' CLIENT substitute WINID WINID_ATTR and \
 		,, bring WINID \
 		,, use_previous \
-	  - silent and + use Depot + use_previous \
-	  - silent merge_tag Depot \
+	  - silent and + use DEMO + use_previous \
+	  - silent merge_tag DEMO \
 	  - use CUR_TAG \
       . unlock
 
