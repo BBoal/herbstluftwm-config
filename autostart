@@ -77,10 +77,19 @@ fi
 # }}}1
 
 # Variables {{{1
+
 ## Modkeys
 Hyper=Mod3
 
 ## TODO Colors
+# black     dark *color0 : light *color8
+# red       dark *color1 : light *color9
+# green     dark *color2 : light *color10
+# yellow    dark *color3 : light *color11
+# blue      dark *color4 : light *color12
+# magenta   dark *color5 : light *color13
+# cyan      dark *color6 : light *color14
+# white     dark *color7 : light *color15
 xrdb_colors=()
 
 ## config dir
@@ -108,8 +117,8 @@ for mon in "${u_monitor_name[@]}"; do
 done
 unset prefix_mon_name char_prefix_mon_name
 
-### source: (https://github.com/t-wissmann/dotfiles)
-## TODO implement theme/colors related cycle_values
+### adapted idea from: (https://github.com/t-wissmann/dotfiles)
+u_color_sample=( black red green teal yellow orange blue magenta pink cyan white )
 u_seq_steps=( $(seq 0 24) )
 u_steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
 		     $(seq 25 -4 13) $(seq 9 -2 1) )
@@ -351,7 +360,6 @@ _bind $Hyper+Insert chain \
 	  - silent merge_tag DEMO \
 	  - use CUR_TAG \
       . unlock
-
 ## }}}3
 
 ## resizing {{{3
@@ -426,17 +434,15 @@ _bind $Hyper+Ctrl+Shift+s chain \
 	    ,, sprintf CTAG_ATTR "%c.tag" C compare CTAG_ATTR "!=" TAG \
 	    ,, sprintf WINID_ATTR "%c.winid" C substitute XWIN WINID_ATTR close XWIN \
       . unlock
-
 ## }}}3
-
 ## }}}2
 
 # layouting {{{2
 ## Frames
-_bind $Hyper+Ctrl+h chain , split left    0.5 , focus left
-_bind $Hyper+Ctrl+j chain , split bottom  0.5 , focus down
-_bind $Hyper+Ctrl+k chain , split top     0.5 , focus up
-_bind $Hyper+Ctrl+l chain , split right   0.5 , focus right
+_bind $Hyper+Ctrl+h chain , split left   0.5 , focus left
+_bind $Hyper+Ctrl+j chain , split bottom 0.5 , focus down
+_bind $Hyper+Ctrl+k chain , split top    0.5 , focus up
+_bind $Hyper+Ctrl+l chain , split right  0.5 , focus right
 _bind $Hyper+Ctrl+space split explode
 #### source: (https://github.com/t-wissmann/dotfiles)
 ### changes frame layout from 1/2 2/3 1/3 of tag size
@@ -502,46 +508,104 @@ _kavs Super+Shift+t	theme.title_when \
 ## border
 _kavs Super+Shift+b	theme.border_width "${u_seq_steps[*]:3:10}" \
 			"Theme border gap: %s"
-
 ## }}}2
-
 # }}}1
 
-# Colors {{{1
-## TODO major overhaul is necessary
-# title
-_attr theme.title_color        "${xrdb_colors[1]:-#ffffff}"
-_attr theme.normal.title_color "${xrdb_colors[1]:-#c6c8d1}"
 
+# Colors {{{1
+## TODO major overhaul is necessary. Implement colors related cycle_values
 # frame
 _set frame_bg_active_color     "${xrdb_colors[1]:-#ffa623}""23"
 _set frame_bg_normal_color     "${xrdb_colors[15]:-#000000}"
 _set frame_border_active_color "${xrdb_colors[1]:-#ff4000}"
 _set frame_border_normal_color "${xrdb_colors[15]:-#000000}""00"
-_set frame_border_inner_color black
+_set frame_border_inner_color  "${xrdb_colors[15]:-#000000}"
 
-# active, normal, urgent
+# ================================ Themes ================================
+#
+## -------------------- background_color --------------------
+# _attr theme.background_color = "${xrdb_colors[15]:-#000000}"
+_attr theme.background_color "${xrdb_colors[15]:-#000000}"
+## -------------------- border_width --------------------
+# _attr theme.border_width = 3
+_attr theme.border_width "${u_seq_steps[3]}"  # must have diff >=1 from inner_width
+_attr theme.floating.border_width "${u_seq_steps[6]}"
+## -------------------- color --------------------
+# _attr theme.color = "${xrdb_colors[15]:-#000000}"
 _attr theme.active.color       "${xrdb_colors[1]:-#4db8ff}"
-_attr theme.active.inner_color "${xrdb_colors[1]:-#4db8ff}"
 _attr theme.normal.color       "${xrdb_colors[1]:-#000000}""00"
-_attr theme.normal.inner_color "${xrdb_colors[1]:-#000000}""00"
+_attr theme.minimal.color "${xrdb_colors[1]:-#4db8ff}"
 _attr theme.urgent.color       "${xrdb_colors[1]:-#e27878}"
+## -------------------- inner_color --------------------
+# _attr theme.inner_color =
+_attr theme.inner_color  "${xrdb_colors[15]:-#000000}" # should match background color
+_attr theme.active.inner_color "${xrdb_colors[1]:-#4db8ff}"
+_attr theme.normal.inner_color "${xrdb_colors[1]:-#000000}""00"
 _attr theme.urgent.inner_color "${xrdb_colors[1]:-#ffa623}"
-# copy inner color to outer_color
+## -------------------- inner_width  --------------------
+# _attr theme.inner_width = 2
+_attr theme.inner_width  "${u_seq_steps[2]}"  # check note of border_width
+## -------------------- outer_color --------------------
+# _attr theme.outer_color = "${xrdb_colors[15]:-#000000}"
+### copy 'inner_color' to 'outer_color'
 for state in active urgent normal ; do
    _hc substitute C theme.${state}.inner_color \
-	      attr theme.${state}.outer_color C
+	      set_attr theme.${state}.outer_color C
 done
 _attr theme.floating.outer_color "${xrdb_colors[1]:-#7759b4}"
-
-# tab
+## -------------------- outer_width  --------------------
+# _attr theme.outer_width = 0
+_attr theme.floating.outer_width  "${u_seq_steps[2]}"
+## -------------------- padding --------------------
+# _attr theme.padding_bottom = 0
+# _attr theme.padding_left = 0
+# _attr theme.padding_right = 0
+# _attr theme.padding_top = 0
+## -------------------- tab_color --------------------
+# _attr theme.tab_color = "${xrdb_colors[1]:-#3f83a6}"
 _attr theme.tab_color              "${xrdb_colors[1]:-#3f83a6}"
 _attr theme.active.tab_color       "${xrdb_colors[1]:-#2d539e}"
+_attr theme.minimal.tab_color "${xrdb_colors[1]:-#3f83a6}"
+## -------------------- tab_outer_color --------------------
+# _attr theme.tab_outer_color = ""
 _attr theme.active.tab_outer_color "${xrdb_colors[1]:-#84a0c6}"
+## -------------------- tab_outer_width --------------------
+# _attr theme.tab_outer_width = ""
+## -------------------- tab_title_color --------------------
+# _attr theme.tab_title_color = ""
 _attr theme.active.tab_title_color "${xrdb_colors[1]:-#ababab}"
-
-_attr theme.background_color "${xrdb_colors[15]:-#000000}"
-
+## -------------------- tight_decoration --------------------
+# _attr theme.tight_decoration = false
+## -------------------- title_align --------------------
+# _attr theme.title_align = left
+_attr theme.minimal.title_align 'center'
+## -------------------- title_color --------------------
+# _attr theme.title_color = "${xrdb_colors[1]:-#ffffff}"
+_attr theme.title_color        "${xrdb_colors[1]:-#ffffff}"
+_attr theme.normal.title_color "${xrdb_colors[1]:-#c6c8d1}"
+_attr theme.minimal.title_color "${xrdb_colors[1]:-#ffffff}"
+## -------------------- title_depth --------------------
+# _attr theme.title_depth = 4
+_attr theme.title_depth 4  # space below the title's baseline
+_attr theme.minimal.title_depth 4
+## -------------------- title_font --------------------
+# _attr theme.title_font = SudoUI Nerd Font:size=13
+_attr theme.title_font 'AardvarkFixed Nerd Font Mono:size=11'
+_attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
+## -------------------- title_height --------------------
+# _attr theme.title_height = 14
+_attr theme.title_height 14
+_attr theme.minimal.title_height 14
+## -------------------- title_when --------------------
+# _attr theme.title_when = multiple_tabs
+_attr theme.title_when multiple_tabs
+_attr theme.minimal.title_when multiple_tabs
+##  ===========================================================
+#
+# _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
+# for state in active urgent normal ; do
+#    _hc substitute C theme.${state}.inner_color \
+#        attr theme.${state}.outer_color C
 # }}}1
 
 # USER Settings {{{1
@@ -569,70 +633,15 @@ _hc substitute ALGO settings.default_frame_layout \
 _set frame_gap  "${u_seq_steps[0]}"
 _set frame_padding  "${u_seq_steps[0]}"
 _set frame_border_width  "${u_seq_steps[3]}"      # must have diff >=1 from inner_width
-_set frame_border_inner_width "${u_seq_steps[0]}"	# check previous note
-
-## opacity
-_set frame_active_opacity "${u_opac_steps[1]}"
-_set frame_normal_opacity "${u_opac_steps[3]}"
+_set frame_border_inner_width "${u_seq_steps[0]}" # check previous note
 
 ## windows
 _set window_gap "${u_seq_steps[0]}"
 
-## title
-_attr theme.title_when multiple_tabs
-_attr theme.title_height 14
-_attr theme.title_font 'SudoUI Nerd Font:size=13'  # example using Xft
-_attr theme.title_depth 4  # space below the title's baseline
-
-## border
-_attr theme.border_width "${u_seq_steps[3]}"  # must have diff >=1 from inner_width
-_attr theme.inner_width  "${u_seq_steps[2]}"  # check previous note
-_attr theme.inner_color  "${xrdb_colors[15]:-#000000}" # should match background color
-
-## floating windows
-_attr theme.floating.border_width "${u_seq_steps[6]}"
-_attr theme.floating.outer_width  "${u_seq_steps[2]}"
-
-############ TODO
-# _attr theme.background_color = "${xrdb_colors[15]:-#000000}"
-# _attr theme.border_width = 3
-# _attr theme.color = "${xrdb_colors[15]:-#000000}"
-# _attr theme.inner_color =
-# _attr theme.inner_width = 2
-# _attr theme.outer_color = "${xrdb_colors[15]:-#000000}"
-# _attr theme.outer_width = 0
-# _attr theme.padding_bottom = 0
-# _attr theme.padding_left = 0
-# _attr theme.padding_right = 0
-# _attr theme.padding_top = 0
-# _attr theme.tab_color = "${xrdb_colors[1]:-#3f83a6}"
-# _attr theme.tab_outer_color = ""
-# _attr theme.tab_outer_width = ""
-# _attr theme.tab_title_color = ""
-# _attr theme.tight_decoration = false
-# _attr theme.title_align = left
-# _attr theme.title_color = "${xrdb_colors[1]:-#ffffff}"
-# _attr theme.title_depth = 4
-# _attr theme.title_font = SudoUI Nerd Font:size=13
-# _attr theme.title_height = 14
-# _attr theme.title_when = multiple_tabs
-#
-# _hc foreach T theme. sprintf CHILDREN "%c.reset" T set_attr CHILDREN true
-# for state in active urgent normal ; do
-#    _hc substitute C theme.${state}.inner_color \
-#        attr theme.${state}.outer_color C
-
-
-# Theme Minimal
-_attr theme.minimal.title_color "${xrdb_colors[1]:-#ffffff}"
-_attr theme.minimal.title_depth 4
-_attr theme.minimal.title_align 'center'
-_attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
-_attr theme.minimal.tab_color "${xrdb_colors[1]:-#3f83a6}"
-_attr theme.minimal.color "${xrdb_colors[1]:-#4db8ff}"
-_attr theme.minimal.title_when multiple_tabs
-_attr theme.minimal.title_height 14
-#}}}1
+## opacity
+_set frame_active_opacity "${u_opac_steps[1]}"
+_set frame_normal_opacity "${u_opac_steps[3]}"
+# }}}1
 
 # Rules {{{1
 _rule focus=on index=e # new clients are open in the closest available frame with focus
@@ -646,6 +655,7 @@ _rule windowrole~'browser' tag="${tag_names[2]}"
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
 _rule class=emacs tag="${tag_names[0]}"
 # }}}1
+
 
 # Init {{{1
 ## Preferred layout on startup
