@@ -641,7 +641,8 @@ _rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
 _rule windowrole~'browser' tag="${tag_names[2]}"
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
-_rule class=emacs tag="${tag_names[0]}"
+_rule class=emacs tag="${tag_names[0]}" keys_inactive='^Mod4.*' # Taking Mod4 keybindings from HLWM while on Emacs.
+### I need them available to Emacs since I don't play the piano... ;)
 # }}}1
 
 # Startup {{{1
