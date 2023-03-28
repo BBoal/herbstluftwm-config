@@ -115,6 +115,9 @@ for mon in "${u_monitor_name[@]}"; do
     char_prefix_mon_name="${prefix_mon_name::1}"
     upper_char_prefix_mon_name+=( "${char_prefix_mon_name^}" )
 done
+### number of vip clients to save for fast focus
+u_max_saved_clients=4
+
 unset prefix_mon_name char_prefix_mon_name
 
 ### adapted idea from: (https://github.com/t-wissmann/dotfiles)
@@ -272,6 +275,14 @@ _bind $Hyper+i  silent or \
 	. remove_attr clients.my_oldfocus \
 	. spawn notify-send -t 1000 -i edit-undo HLWM 'Jump to previously focused window' \
     : spawn notify-send -t 1000 -i messagebox_warning HLWM 'No urgent or formerly focused window'
+
+## Assign keys to VIP clients for fast focus
+### e.g Super+Ctrl+1 sets the first client to be called with Super+Shift+1
+for ((i=1;i<="${u_max_saved_clients}";i++)); do
+    _bind Super+Ctrl+"${i}" spawn "${hc_dir}"/_save_vip_client "${i}"
+done
+
+
 ## }}}3
 
 ## cycle {{{3
@@ -306,7 +317,7 @@ _shift_or_detach() {
     [[ "$2" == "up" ]] && split_dir="top"
     [[ "$2" == "down" ]] && split_dir="bottom"
        # If you're shifting right the empty frame to close is on the left (opposite dir)
-    declare -A previous_frame     # declaring associatives arrays is mandatory
+    declare -A previous_frame     # declaring associative arrays is mandatory
     previous_frame=([left]=right [down]=up [up]=down [right]=left)
 
     _bind "$1" silent or , and \

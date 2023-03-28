@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+_hc()   { herbstclient "$@";}
+_bind() { _hc keybind "$@";}
+
+saved_client=$(herbstclient attr clients.focus.winid) || exit  # Exit if frame is empty
+
+_bind Super+Shift+"$1" silent or \
+      , jumpto "${saved_client}" \
+      , spawn notify-send -t 2000 messagebox_warning HLWM 'Reference to unknown client'
