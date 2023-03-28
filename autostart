@@ -28,7 +28,7 @@ _attr() { _hc attr "$@";}
 _rule() { _hc rule "$@";}
 _autostart_reload() { _hc silent get_attr my_not_first_autostart;}
 ## Helper function to organize workspaces
-_arrange_workspace() { local t=$1
+_arrange_workspace() { t=$1
 		       cat <<-EOF
 herbstclient chain , lock \
 , set swap_monitors_to_get_tag true \\
@@ -210,7 +210,7 @@ _hc mousebind Super+Button3 resize
 # }}}2
 
 # top level commands {{{2
-_bind $Hyper+Alt+q   spawn shutdown
+_bind $Hyper+Alt+q   spawn systemctl poweroff
 _bind $Hyper+Alt+l   quit
 _bind Alt+F5         quit
 _bind $Hyper+Alt+r   reload
@@ -298,16 +298,24 @@ _bind Super+Shift+c   cycle_monitor -1
 ### clients and frames
 
 #### Function that detaches focused client to a dedicated frame if, in a multiple
-#### client frame near the monitor's border and shift command is executed in
-#### direction of mentioned border
+#### client frame near the monitor's edge the shift command is executed in
+#### direction of mentioned edge. Empty frames are closed in the process.
 _shift_or_detach() {
-    dir="$2"
-    [[ "$2" == "up" ]] && dir="top"
-    [[ "$2" == "down" ]] && dir="bottom"
-    _bind "$1" silent or , shift "$2" \
-			 , silent and \
-			      + compare tags.focus.curframe_wcount gt 1 \
-			      + split "$dir" 0.5 + shift "$2"
+    split_dir="$2"
+       # parsing movement to split options
+    [[ "$2" == "up" ]] && split_dir="top"
+    [[ "$2" == "down" ]] && split_dir="bottom"
+       # If you're shifting right the empty frame to close is on the left (opposite dir)
+    declare -A previous_frame     # declaring associatives arrays is mandatory
+    previous_frame=([left]=right [down]=up [up]=down [right]=left)
+
+    _bind "$1" silent or , and \
+			    + compare tags.focus.curframe_wcount = 1 \
+			    + shift "$2" + focus -e "${previous_frame[$2]}" + close_and_remove \
+			 , shift "$2" \
+			 , and \
+			    + compare tags.focus.curframe_wcount gt 1 \
+			    + split "${split_dir}" 0.5 + shift "$2"
 }
 _shift_or_detach Super+Shift+h left
 _shift_or_detach Super+Shift+j down
@@ -641,7 +649,7 @@ _rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
 _rule windowrole~'browser' tag="${tag_names[2]}"
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
-_rule class=emacs tag="${tag_names[0]}" keys_inactive='^Mod4.*' # Taking Mod4 keybindings from HLWM while on Emacs.
+_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*" # Taking Mod4 keybindings from HLWM while on Emacs.
 ### I need them available to Emacs since I don't play the piano... ;)
 # }}}1
 
