@@ -1,15 +1,51 @@
 #!/bin/env bash
+#
+# HerbstluftWM script  --- On the focused focused frame, close
+# all clients, except the focused one.
+#
+# Copyright (c) 2023  Bruno Boal <bruno.boal@tutanota.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+## Commentary: This is another way of implementing the function defined on the section
+# "close/remove" in the autostart file, called with the keychord "$Hyper+Shift+s"
 
 current_tag=$(herbstclient attr tags.focus.name)
 current_frame=$(herbstclient attr tags.focus.focused_client.parent_frame.index)
 current_client=$(herbstclient attr clients.focus.winid)
 
+## exit if the script is run on an empty frame
+[[ -z "${current_client}" ]] && exit
+
 declare -a CLIENTS
 readarray -t CLIENTS < <(herbstclient list_clients --tag="${current_tag}" --frame="${current_frame}")
 
 for c in "${CLIENTS[@]}"; do
-   if [[ "${current_client}" == "${c}" ]]; then
-      continue
-   fi
-   herbstclient close "${c}"
+	if [[ "${current_client}" == "${c}" ]]; then
+		continue
+	fi
+	herbstclient close "${c}"
 done
+
+## Emacs
+# Local Variables:
+# eval: (delete 'indentation whitespace-style)
+# eval: (add-to-list 'whitespace-style 'indentation::tab)
+# eval: (indent-tabs-mode t)
+# tab-width: 4
+# End:
+
+## Vim
+# vim: set ts=4 expandtab fdm=marker:

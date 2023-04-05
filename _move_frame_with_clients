@@ -1,15 +1,40 @@
 #!/bin/env bash
+#
+# HerbstluftWM script  --- Moves the clients of the focused frame to
+# a newly frame in the destination tag, created by splinting the root frame
+# in half along the biggest side. The original frame is then removed.
+#
+# Copyright (c) 2023  Bruno Boal <bruno.boal@tutanota.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+if [[ "$#" -lt 1 ]]; then
+	notify-send -t 2000 "Usage: $0 'tag-name'" &> /dev/null
+	exit 1
+fi
+
 _hc() { herbstclient "$@";}
 
-## only argument is destination frame
+## only argument is the destination frame
 dest_frame="$1"
 
-## current client and tag
-present_client=$(_hc attr clients.focus.winid)
-present_tag=$(_hc attr tags.focus.name)
+## getting the current client and tag
+current_client=$(_hc attr clients.focus.winid)
+current_tag=$(_hc attr tags.focus.name)
 
-## exit if script is run on an empty frame
-[[ -z "${present_client}" ]] && exit
+## exit if the script is run on an empty frame
+[[ -z "${current_client}" ]] && exit
 
 ## getting the id's of the clients in the focused frame
 readarray -t clients_winid_move < <(_hc list_clients --frame=@)
@@ -21,16 +46,16 @@ _hc split auto 0.5 ''
 
 ## send all clients to newly created frame
 for ((i=0;i<"${#clients_winid_move[@]}";i++)); do
-    _hc apply_tmp_rule "${clients_winid_move[${i}]}" tag="${dest_frame}" index=1
+	_hc apply_tmp_rule "${clients_winid_move[${i}]}" tag="${dest_frame}" index=1
 done
 
 ## hack to avoid leaving empty frame where clients were
-_hc use "${present_tag}"
+_hc use "${current_tag}"
 _hc remove
 
-## refocus present client
-_hc jumpto "${present_client}"
+## refocus current client
+_hc jumpto "${current_client}"
 _hc unlock
 
 ## unsetting all used variables
-unset dest_frame present_client present_tag
+unset dest_frame current_client current_tag

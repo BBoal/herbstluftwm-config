@@ -1,9 +1,37 @@
 #!/usr/bin/env bash
-_hc()   { herbstclient "$@";}
-_bind() { _hc keybind "$@";}
+#
+# HerbstluftWM script  --- Should be called either interactively on a vip
+# client to be, passing one argument, or preferably, using Super+Ctrl+"$1",
+# assigning both cases Super+Shift+"$1" as a shortcut for the
+# focused window.
+#
+# Copyright (c) 2023  Bruno Boal <bruno.boal@tutanota.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-saved_client=$(herbstclient attr clients.focus.winid) || exit  # Exit if frame is empty
 
-_bind Super+Shift+"$1" silent or \
-      , jumpto "${saved_client}" \
-      , spawn notify-send -t 2000 messagebox_warning HLWM 'Reference to unknown client'
+if [[ "$#" -lt 1 ]]; then
+	notify-send -t 2000 "Usage: $0 'key'" &> /dev/null
+	exit 1
+fi
+
+saved_client=$(herbstclient attr clients.focus.winid)
+
+## exit if the script is run on an empty frame
+[[ -z "${saved_client}" ]] && exit
+
+
+herbstclient keybind Super+Shift+"$1" silent or \
+	  , jumpto "${saved_client}" \
+	  , spawn notify-send -t 2000 -i messagebox_warning HLWM 'Reference to unknown client'
