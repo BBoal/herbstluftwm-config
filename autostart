@@ -87,9 +87,9 @@ Hyper=Mod3
 xrdb_colors=( \
 				# Dark Colors
 # color0    color1    color2    color3    color4    color5    color6    color7
-"#002c41" "#e27878" "#82c9b6" "#ffa623" "#2d539e" "#7759b4" "#3f83a6" "#e5ebee"
+"#002c41" "#e27878" "#82c9b6" "#ffa623" "#2d539e" "#7759b4" "#3f83a6" "#e5ebee" \
 # BLACK      RED      GREEN    YELLOW     BLUE     MAGENTA    CYAN      WHITE
-"#99aab3" "#ff4000" "#17e364" "#eed955" "#4db8ff" "#787ef4" "#84a0c6" "#ffffff"\
+"#99aab3" "#ff4000" "#17e364" "#eed955" "#4db8ff" "#787ef4" "#84a0c6" "#ffffff" \
 # color8    color9   color10   color11   color12   color13   color14   color15
 				# Light Colors
 )
@@ -691,7 +691,7 @@ _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
 _rule windowrole~'browser' tag="${tag_names[2]}"
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
 # Taking Mod4(Super) keybindings from HLWM while on Emacs.
-_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*"
+_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*" fullscreen=true
 ### I need them available in Emacs since I don't play the piano... ;)
 # }}}1
 
