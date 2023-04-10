@@ -103,32 +103,34 @@ u_wallpapers="$XDG_CONFIG_HOME/wallpapers"
 
 ## Monitor setup
 ### User preference
+#### with n tags per monitor -> L0(lower0) U1(upper0) R0(right0),
+#### L1 U1 R1, ... , Ln Un Rn, (number of monitors * n workspaces)
 u_tags_per_monitor=2
 tag_keys=( {1..9} 0 )
-### with 3 tags per monitor -> L0(lower0) U1(upper0) R0(right0),
-### L1 U1 R1, L2 U2 R2, ... (9 workspaces)
+#### monitor names are "cut" in the for loop below, using '_' as a separator
+#### and taking only the first character from the initial `u_monitor_name`
 u_monitor_name=("lower_center" "upper_center" "right_side" "left_side" )
-### number of physical monitors
+#### number of physical monitors
 monitor_count=$(xrandr --current | grep -c '\sconnected')
-### filtering through the name list
+#### filtering through the name list
 u_monitor_name=( "${u_monitor_name[@]::${monitor_count}}" )
-### getting first char turned uppercase of u_monitor_name
+#### getting first char turned uppercase of u_monitor_name
 for mon in "${u_monitor_name[@]}"; do
 	prefix_mon_name="${mon%_*}"
 	char_prefix_mon_name="${prefix_mon_name::1}"
 	upper_char_prefix_mon_name+=( "${char_prefix_mon_name^}" )
 done
-### number of vip clients to save for fast focus
+#### number of vip clients to save for fast focus
 u_max_saved_clients=4
 
 unset prefix_mon_name char_prefix_mon_name
 
-### adapted idea from: (https://github.com/t-wissmann/dotfiles)
+#### adapted idea from: (https://github.com/t-wissmann/dotfiles)
 u_seq_steps=( $(seq 0 24) )
 u_steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
 		$(seq 25 -4 13) $(seq 9 -2 1) )
 u_opac_steps=( $(seq 100 -10 10) )
-### Offset example: "${u_seq_steps[@]:1}"  ->  1 2 3 4 5 6 7 8 9 10 .. 24
+#### Offset example: "${u_seq_steps[@]:1}"  ->  1 2 3 4 5 6 7 8 9 10 .. 24
 
 # }}}1
 
@@ -173,10 +175,10 @@ done
 _lock_in_monitor_the_tags() {
 	local mon="$1"
 	shift
-	for t in "$@"; do
+	for args; do
 		_hc chain \
-			, silent new_attr string tags."$t".my_monitor \
-			, silent set_attr tags."$t".my_monitor "$mon"
+			, silent new_attr string tags."$args".my_monitor \
+			, silent set_attr tags."$args".my_monitor "$mon"
 	done
 }
 # Lock tags to specific monitors. e.g
@@ -649,13 +651,13 @@ _attr theme.minimal.title_when multiple_tabs
 ## global
 _set focus_crosses_monitor_boundaries false
 _set show_frame_decorations focused
-_set frame_bg_transparent off
-_set smart_window_surroundings on
-_set mouse_recenter_gap 0
-_set focus_follows_mouse 0
-_set auto_detect_monitors on
+_set frame_bg_transparent false
+_set smart_window_surroundings true
+_set mouse_recenter_gap false
+_set focus_follows_mouse false
+_set auto_detect_monitors true
 _set update_dragged_clients false
-_set swap_monitors_to_get_tag off
+_set swap_monitors_to_get_tag false
 _set smart_frame_surroundings hide_gaps
 _set tree_style '╾│ ├└╼─┐'
 _set default_frame_layout max
