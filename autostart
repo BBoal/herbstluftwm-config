@@ -73,7 +73,7 @@ if _autostart_reload; then
 						+ substitute T_NAME ATTR_NAME use T_NAME \
 						+ foreach R tags.focus.tiling.root --recursive remove \
 						+ try use_previous \
-					,, substitute NAME ATTR_NAME merge_tag NAME \
+					,, substitute NAME ATTR_NAME silent merge_tag NAME \
 		. unlock
 fi
 # }}}1
@@ -103,7 +103,7 @@ u_wallpapers="$XDG_CONFIG_HOME/wallpapers"
 
 ## Monitor setup
 ### User preference
-u_tags_per_monitor=3
+u_tags_per_monitor=2
 tag_keys=( {1..9} 0 )
 ### with 3 tags per monitor -> L0(lower0) U1(upper0) R0(right0),
 ### L1 U1 R1, L2 U2 R2, ... (9 workspaces)
@@ -222,9 +222,9 @@ _bind $Hyper+Alt+r  reload
 
 # launching programs {{{2
 ## general
-_bind Super+Return       spawn "${TERMINAL:-xterm}"
+_bind $Hyper+Return      spawn "${TERMINAL:-xterm}"
 _bind Super+Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
-_bind $Hyper+Return      spawn rofi -show window -modi window -show-icons
+_bind $Hyper+BackSpace   spawn rofi -show window -modi window -show-icons
 _bind $Hyper+Scroll_Lock spawn slock
 ## specific
 _bind Ctrl+Super+Prior       spawn pactl set-sink-volume @DEFAULT_SINK@ +1000
@@ -688,7 +688,8 @@ _rule fixedsize floating=on
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' floating=on
 _rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
-_rule windowrole~'browser' tag="${tag_names[2]}"
+_rule windowrole~'browser' monitor=2
+_rule windowrole~'PictureInPicture' monitor=1 floating=false fullscreen=true
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
 # Taking Mod4(Super) keybindings from HLWM while on Emacs.
 _rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*" fullscreen=true
@@ -704,7 +705,7 @@ if ! _autostart_reload; then
 	# "ATTENTION: default value of option mesa_glthread overridden by env..."
 	_hc export MESA_DEBUG=silent
 	_hc chain . spawn emacs . spawn firefox
-	_hc silent new_attr bool my_not_first_autostart true
+	_hc new_attr bool my_not_first_autostart true
 fi
 
 _hc unlock
