@@ -399,10 +399,10 @@ _bind $Hyper+Insert chain \
 ## resizing {{{3
 ### frames and floating clients
 resizestep=0.01
-_bind $Hyper+Left   resize left  +"$resizestep"
-_bind $Hyper+Down   resize down  +"$resizestep"
-_bind $Hyper+Up     resize up    +"$resizestep"
-_bind $Hyper+Right  resize right +"$resizestep"
+_bind $Hyper+Left   silent resize left  +"$resizestep"
+_bind $Hyper+Down   silent resize down  +"$resizestep"
+_bind $Hyper+Up     silent resize up    +"$resizestep"
+_bind $Hyper+Right  silent resize right +"$resizestep"
 ## }}}3
 
 ## rotate/mirror {{{3
@@ -493,7 +493,7 @@ _bind $Hyper+z fullscreen toggle
 _bind $Hyper+p pseudotile toggle
 _bind $Hyper+Shift+f set_attr clients.focus.floating toggle
 _bind $Hyper+Shift+d set_attr clients.focus.decorated toggle
-_bind $Hyper+Shift+n set_attr clients.focus.minimized true
+_bind $Hyper+Shift+n silent set_attr clients.focus.minimized true
 _bind $Hyper+Shift+m jumpto last-minimized
 ## unminimized all clients
 _bind $Hyper+Shift+u \
@@ -622,20 +622,21 @@ _attr theme.active.tab_title_color "${xrdb_colors[8]:-#ababab}"
 # _attr theme.tight_decoration false
 ## -------------------- title_align --------------------
 # _attr theme.title_align  left
-_attr theme.minimal.title_align 'center'
 ## -------------------- title_color --------------------
 _attr theme.title_color     "${xrdb_colors[15]:-#ffffff}"
 _attr theme.normal.title_color  "${xrdb_colors[7]:-#c6c8d1}"
 _attr theme.minimal.title_color "${xrdb_colors[15]:-#ffffff}"
 ## -------------------- title_depth --------------------
-_attr theme.title_depth     4  # space below the title's baseline
-_attr theme.minimal.title_depth 4
-## -------------------- title_font --------------------
-_attr theme.title_font  'AardvarkFixed Nerd Font Mono:size=11'
-_attr theme.minimal.title_font 'AardvarkFixed Nerd Font Mono:size=11'
+## _attr theme.minimal.title_depth 4 # space below the title's baseline
+## ------------  title_align  title_depth  title_font  title_height  ------------
+for i in . .active. .floating. .fullscreen. .minimal. .normal. .tiling. .urgent. ; do
+	_attr theme"$i"title_align 'center'
+	_attr theme"$i"title_depth 4
+	_attr theme"$i"title_font 'AardvarkFixed Nerd Font Mono:size=11'
+	_attr theme"$i"title_height 14
+done
 ## -------------------- title_height --------------------
-_attr theme.title_height 14
-_attr theme.minimal.title_height 14
+## _attr theme.minimal.title_height 14
 ## -------------------- title_when --------------------
 _attr theme.title_when multiple_tabs
 _attr theme.minimal.title_when multiple_tabs
@@ -653,7 +654,7 @@ _set focus_crosses_monitor_boundaries false
 _set show_frame_decorations focused
 _set frame_bg_transparent false
 _set smart_window_surroundings true
-_set mouse_recenter_gap false
+_set mouse_recenter_gap 0
 _set focus_follows_mouse false
 _set auto_detect_monitors true
 _set update_dragged_clients false
