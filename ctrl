@@ -1,0 +1,17 @@
+
+// Make the right Ctrl key a right Hyper,
+// and the CapsLock key a right Control,
+// Ctrl-L is AltGr. Alts are Meta keys
+partial modifier_keys
+xkb_symbols "hyper_capscontrol" {
+    replace key <CAPS> { [ Control_R ] };
+    replace key <RCTL> { [ Hyper_R ] };
+    modifier_map Control { <CAPS> };
+    modifier_map Mod3 { Hyper_R };
+    // Alt and Ctrl
+    replace key <RALT> { [ Alt_R, Meta_R ] };
+    replace key <LCTL> { [ ISO_Level3_Shift ] };
+    modifier_map Mod1    { <LALT>, <RALT> };
+};
+
+/usr/share/X11/xkb/symbols/ctrl
