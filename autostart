@@ -490,7 +490,6 @@ _bind $Hyper+Ctrl+ccedilla \
 ## Clients
 _bind $Hyper+f floating toggle
 _bind $Hyper+z fullscreen toggle
-_bind $Hyper+p pseudotile toggle
 _bind $Hyper+Shift+f set_attr clients.focus.floating toggle
 _bind $Hyper+Shift+d set_attr clients.focus.decorated toggle
 _bind $Hyper+Shift+n silent set_attr clients.focus.minimized true
@@ -717,10 +716,10 @@ unset tag_keys tag_names u_monitor_name monitor_count
 
 ## Emacs
 # Local Variables:
-# eval: (delete 'indentation whitespace-style)
-# eval: (add-to-list 'whitespace-style 'indentation::tab)
 # eval: (indent-tabs-mode t)
 # tab-width: 4
+# eval: (delete 'indentation whitespace-style)
+# eval: (add-to-list 'whitespace-style 'indentation::tab)
 # End:
 
 ## Vim
