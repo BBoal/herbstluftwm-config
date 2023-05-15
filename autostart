@@ -225,6 +225,7 @@ _bind $Hyper+Alt+r  reload
 # launching programs {{{2
 ## general
 _bind $Hyper+Return      spawn "${TERMINAL:-xterm}"
+_bind Super+Return       spawn xterm -e setxkbmap -option ctrl:hyper_capscontrol
 _bind Super+Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
 _bind $Hyper+BackSpace   spawn rofi -show window -modi window -show-icons
 _bind $Hyper+Scroll_Lock spawn slock
@@ -631,7 +632,7 @@ _attr theme.minimal.title_color "${xrdb_colors[15]:-#ffffff}"
 for i in . .active. .floating. .fullscreen. .minimal. .normal. .tiling. .urgent. ; do
 	_attr theme"$i"title_align 'center'
 	_attr theme"$i"title_depth 4
-	_attr theme"$i"title_font 'AardvarkFixed Nerd Font Mono:size=11'
+	_attr theme"$i"title_font 'Iosevka Zenodotus:size=11'
 	_attr theme"$i"title_height 14
 done
 ## -------------------- title_height --------------------
@@ -718,8 +719,8 @@ unset tag_keys tag_names u_monitor_name monitor_count
 # Local Variables:
 # eval: (indent-tabs-mode t)
 # tab-width: 4
-# eval: (delete 'indentation whitespace-style)
 # eval: (add-to-list 'whitespace-style 'indentation::tab)
+# eval: (delete 'indentation whitespace-style)
 # End:
 
 ## Vim
