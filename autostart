@@ -695,7 +695,7 @@ _rule windowrole~'browser' monitor=2
 _rule windowrole~'PictureInPicture' monitor=1 floating=false fullscreen=true
 _rule class=mpv tag="${tag_names[1]}" fullscreen=true
 # Taking Mod4(Super) keybindings from HLWM while on Emacs.
-_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*" fullscreen=true
+_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*"
 ### I need them available in Emacs since I don't play the piano... ;)
 # }}}1
 
