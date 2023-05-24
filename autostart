@@ -692,10 +692,11 @@ _rule windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' floating=on
 _rule windowtype='_NET_WM_WINDOW_TYPE_DIALOG' focus=on floatplacement=center
 _rule windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' manage=off
 _rule windowrole~'browser' monitor=2
+_rule instance~'.*[Pp]df' monitor=2 fullscreen=true focus=on
 _rule windowrole~'PictureInPicture' monitor=1 floating=false fullscreen=true
-_rule class=mpv tag="${tag_names[1]}" fullscreen=true
+_rule class=mpv monitor=1 fullscreen=true
 # Taking Mod4(Super) keybindings from HLWM while on Emacs.
-_rule class=Emacs tag="${tag_names[0]}" keys_inactive="^Mod4.*"
+_rule class=Emacs monitor=0 keys_inactive="^Mod4.*"
 ### I need them available in Emacs since I don't play the piano... ;)
 # }}}1
 
