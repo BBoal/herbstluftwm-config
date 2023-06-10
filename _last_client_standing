@@ -3,7 +3,7 @@
 # HerbstluftWM script  --- On the focused focused frame, close
 # all clients, except the focused one.
 #
-# Copyright (c) 2023  Bruno Boal <bruno.boal@tutanota.com>
+# Copyright (c) 2023  Bruno Boal <egomet@bboal.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

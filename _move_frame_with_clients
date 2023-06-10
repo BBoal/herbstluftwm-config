@@ -4,7 +4,7 @@
 # a newly frame in the destination tag, created by splinting the root frame
 # in half along the biggest side. The original frame is then removed.
 #
-# Copyright (c) 2023  Bruno Boal <bruno.boal@tutanota.com>
+# Copyright (c) 2023  Bruno Boal <egomet@bboal.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
