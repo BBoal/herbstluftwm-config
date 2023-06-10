@@ -87,7 +87,7 @@ Hyper=Mod3
 xrdb_colors=( \
                 # Dark Colors
 # color0    color1    color2    color3    color4    color5    color6    color7
-"#002c41" "#e27878" "#82c9b6" "#ffa623" "#2d539e" "#7759b4" "#3f83a6" "#e5ebee" \
+"#002c41" "#e27878" "#82c9b6" "#cfaf00" "#2d539e" "#7759b4" "#3f83a6" "#e5ebee" \
 # BLACK      RED      GREEN    YELLOW     BLUE     MAGENTA    CYAN      WHITE
 "#99aab3" "#ff4000" "#17e364" "#eed955" "#4db8ff" "#787ef4" "#84a0c6" "#ffffff" \
 # color8    color9   color10   color11   color12   color13   color14   color15
@@ -502,11 +502,10 @@ _bind $Hyper+Shift+u \
             , compare MINATT "=" "true" \
             , set_attr MINATT false
 
-##  layout cycling. skipping grid when clients=2 (grid=horizontal)
-_bind $Hyper+minus or \
-    , and ,, compare tags.focus.curframe_wcount = 2 \
-          ,, cycle_layout +1 vertical horizontal max \
-    , cycle_layout +1
+
+##  layout cycling (Horizontal/Vertical, Max, Grid)
+_bind $Hyper+minus spawn "${hc_dir}"/_optimal_cycle_layout
+
 ## }}}2
 
 # customize theme {{{2
@@ -566,7 +565,7 @@ _kavs Super+Shift+b     theme.border_width \
 # frame
 _set frame_bg_active_color     "${xrdb_colors[3]:-#ffa623}""23"
 _set frame_bg_normal_color     "${xrdb_colors[0]:-#000000}"
-_set frame_border_active_color "${xrdb_colors[9]:-#ff4000}"
+_set frame_border_active_color "${xrdb_colors[9]:-#cfaf00}"
 _set frame_border_normal_color "${xrdb_colors[0]:-#000000}""00"
 _set frame_border_inner_color  "${xrdb_colors[0]:-#000000}"
 
@@ -589,7 +588,7 @@ _attr theme.active.inner_color "${xrdb_colors[12]:-#4db8ff}"
 _attr theme.normal.inner_color "${xrdb_colors[0]:-#000000}""00"
 _attr theme.urgent.inner_color "${xrdb_colors[3]:-#ffa623}"
 ## -------------------- inner_width      --------------------
-_attr theme.inner_width "${u_seq_steps[2]}"      # check note of border_width
+_attr theme.inner_width "${u_seq_steps[0]}"      # check note of border_width
 ## -------------------- outer_color --------------------
 _attr theme.outer_color "${xrdb_colors[0]:-#000000}"
 ### copy 'inner_color' to 'outer_color'

@@ -1,0 +1,52 @@
+#!/bin/env bash
+#
+# HerbstluftWM script  --- Sets the layout cycle between max, vertical
+# or horizontal, depending on the largest side of the frame, and grid, if
+# there's more than 2 clients present on the frame.
+#
+# Copyright (c) 2023  Bruno Boal <egomet@bboal.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+_hc() { herbstclient "$@";}
+
+# defaults
+default_split="horizontal"
+
+
+# output is WIDTHxHEIGHT+POSX+POSY
+frame_content_geo=$(_hc attr tags.focus.focused_client.parent_frame.content_geometry)
+
+# Getting rid of suffix containing frame position
+frame_geometry="${frame_content_geo%%\+*}"
+
+# With x as the separator we can store width and heigth in an array
+readarray -td x arr_frame_geo <<< "${frame_geometry}"
+
+## width:  ${arr_frame_geo[0]}
+## height:  ${arr_frame_geo[1]}
+if [[ ${arr_frame_geo[0]} -lt ${arr_frame_geo[1]} ]] ; then
+    default_split="vertical"
+fi
+
+## layout cycling. skipping grid when clients=2 (grid=horizontal)
+_hc or \
+    , and ,, compare tags.focus.curframe_wcount = 2 \
+          ,, cycle_layout +1 "${default_split}" max \
+    , cycle_layout +1 "${default_split}" grid max
+
+
+## unsetting all used variables
+unset default_split frame_content_geo frame_geometry
