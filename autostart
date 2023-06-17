@@ -143,7 +143,7 @@ for ((t=0; t<"${u_tags_per_monitor}";t++)); do
         tag_names+=( "${upper_char_prefix_mon_name[${i}]}""${t}" )
     done
     ### Hyper-Super-F1 gets L0 U0 R0 in monitors
-    _bind "$Hyper+Super+F$((t+1))" spawn bash -c "$(_arrange_workspace ${t})"
+    _bind "$Hyper+F$((t+1))" spawn bash -c "$(_arrange_workspace ${t})"
 done
 unset upper_char_prefix_mon_name
 
@@ -358,13 +358,6 @@ _bind $Hyper+Shift+Left  shift_edge left
 _bind $Hyper+Shift+Down  shift_edge down
 _bind $Hyper+Shift+Up    shift_edge up
 _bind $Hyper+Shift+Right shift_edge right
-
-### shift clients to monitor
-for (( m=0; m<"${monitor_count}";m++ )) ; do
-    #### ex. Hyper+Shift+F1      shift_to_monitor 0       focus_monitor 0
-    _bind "$Hyper+F$((m+1))" \
-                chain , shift_to_monitor "${m}" , focus_monitor "${m}"
-done
 
 ### clients to 'DEMO' tag for later visualization
 _bind $Hyper+Delete chain \
