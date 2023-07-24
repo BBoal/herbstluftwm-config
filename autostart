@@ -225,8 +225,8 @@ _bind $Hyper+Alt+r  reload
 # launching programs {{{2
 ## general
 _bind $Hyper+Return      spawn "${TERMINAL:-xterm}"
-_bind Super+Return       spawn xterm -e setxkbmap -option ctrl:hyper_capscontrol
-_bind Super+Delete       spawn xterm -e "$HOME/scripts/tm" #TMUX
+_bind Super+Return       spawn xterm -e setxkbmap -option "ctrl:hyper_capscontrol"
+_bind Super+Delete       spawn xterm -e "$HOME/scripts/tms" #TMUX
 _bind $Hyper+BackSpace   spawn rofi -show window -modi window -show-icons
 _bind $Hyper+Scroll_Lock spawn slock
 ## specific
@@ -411,9 +411,9 @@ _bind Super+q         close_or_remove
 _bind $Hyper+Shift+x  remove
 #### source: (https://github.com/t-wissmann/dotfiles)
 ### try to close the window, if it is ignored for three times, kill it.
-_bind $Hyper+q and \
+_bind $Hyper+q silent and \
     , close_and_remove \
-    , try silent new_attr int clients.focus.my_close_count 0 \
+    , try new_attr int clients.focus.my_close_count 0 \
     , set_attr clients.focus.my_close_count '+=1' \
     , compare clients.focus.my_close_count ge 3 \
     , try sprintf BODY "Killing »%s« (%s)" \
@@ -484,8 +484,8 @@ _bind $Hyper+Ctrl+ccedilla \
 ## Clients
 _bind $Hyper+f floating toggle
 _bind $Hyper+z fullscreen toggle
-_bind $Hyper+Shift+f set_attr clients.focus.floating toggle
-_bind $Hyper+Shift+d set_attr clients.focus.decorated toggle
+_bind $Hyper+Shift+f silent set_attr clients.focus.floating toggle
+_bind $Hyper+Shift+d silent set_attr clients.focus.decorated toggle
 _bind $Hyper+Shift+n silent set_attr clients.focus.minimized true
 _bind $Hyper+Shift+m jumpto last-minimized
 ## unminimized all clients
