@@ -236,7 +236,7 @@ _bind Ctrl+Super+Pause       spawn pactl set-sink-mute   @DEFAULT_SINK@ toggle
 _bind Ctrl+Super+Scroll_Lock spawn pactl set-source-mute @DEFAULT_SINK@ toggle
 _bind $Hyper+Super+w         spawn firefox
 _bind $Hyper+Super+e         spawn emacs
-_bind $Hyper+Super+m         spawn thunar
+_bind $Hyper+Super+m         spawn pcmanfm
 _bind $Hyper+Super+r         spawn "$hc_dir/dmenu_run_hlwm"
 # }}}2
 
