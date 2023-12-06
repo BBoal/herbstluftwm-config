@@ -105,11 +105,11 @@ u_wallpapers="$XDG_CONFIG_HOME/wallpapers"
 ### User preference
 #### with n tags per monitor -> L0(lower0) U1(upper0) R0(right0),
 #### L1 U1 R1, ... , Ln Un Rn, (number of monitors * n workspaces)
-u_tags_per_monitor=2
+u_tags_per_monitor=3
 tag_keys=( {1..9} 0 )
 #### monitor names are "cut" in the for loop below, using '_' as a separator
 #### and taking only the first character from the initial `u_monitor_name`
-u_monitor_name=("lower_center" "upper_center" "right_side" "left_side" )
+u_monitor_name=("right_bottom" "center_top" "left_bottom")
 #### number of physical monitors
 monitor_count=$(xrandr --current | grep -c '\sconnected')
 #### filtering through the name list
@@ -128,7 +128,7 @@ unset prefix_mon_name char_prefix_mon_name
 #### adapted idea from: (https://github.com/t-wissmann/dotfiles)
 u_seq_steps=( $(seq 0 24) )
 u_steps=( $(seq 0 2 8) $(seq 12 4 24) $(seq 32 8 64) $(seq 57 -8 33) \
-        $(seq 25 -4 13) $(seq 9 -2 1) )
+		  $(seq 25 -4 13) $(seq 9 -2 1) )
 u_opac_steps=( $(seq 100 -10 10) )
 #### Offset example: "${u_seq_steps[@]:1}"  ->  1 2 3 4 5 6 7 8 9 10 .. 24
 
@@ -139,10 +139,10 @@ u_opac_steps=( $(seq 100 -10 10) )
 ## naming tags
 for ((t=0; t<"${u_tags_per_monitor}";t++)); do
     for i in "${!upper_char_prefix_mon_name[@]}"; do
-        ### combining L U R with chosen num of tags/monitor L0 U0 R0 .. L2 U2 R2
+        ### combining M R L with chosen num of tags/monitor M0 R0 L0 .. M2 R2 L2
         tag_names+=( "${upper_char_prefix_mon_name[${i}]}""${t}" )
     done
-    ### Hyper-Super-F1 gets L0 U0 R0 in monitors
+    ### Hyper-F1 gets M0 R0 L0 in monitors
     _bind "$Hyper+F$((t+1))" spawn bash -c "$(_arrange_workspace ${t})"
 done
 unset upper_char_prefix_mon_name
@@ -201,12 +201,14 @@ for n in "${!u_monitor_name[@]}" ;  do
     _hc try silent rename_monitor "${n}" "${u_monitor_name[${n}]}"
 done
 
-## wallpapers
-if [[ "${HOSTNAME:-$(hostname)}"  =~ tiny|desktop ]]; then
-    xwallpaper --output DP-2-1 --center "$u_wallpapers"/root_blue.png \
-        --output HDMI-1 --center "$u_wallpapers"/cron_blue.png &> /dev/null
-    ### --output DP-2-8 --center "$u_wallpapers"/wallhaven-wq8ewp_1200x1920.png
-fi
+## wallpapers 2023-09-13 TODO => Func that checks dimension for each monitor
+## and sets proper wallpapers accordingly. Probably matching dim x name of file
+
+## if [[ "${HOSTNAME:-$(hostname)}" =~ tiny|desktop && "${monitor_count} eq 3 ]]; then
+##    xwallpaper --output DP-2-1 --center "$u_wallpapers"/root_blue.png \
+##		 --output HDMI-1 --center "$u_wallpapers"/cron_blue.png &> /dev/null
+##               --output DP-2-8 --center "$u_wallpapers"/wallhaven-wq8ewp_1200x1920.png
+## fi
 # }}}1
 
 # Keybindings {{{1
@@ -225,7 +227,8 @@ _bind $Hyper+Alt+r  reload
 # launching programs {{{2
 ## general
 _bind $Hyper+Return      spawn "${TERMINAL:-xterm}"
-_bind Super+Return       spawn xterm -e setxkbmap -option "ctrl:hyper_capscontrol"
+_bind Ctrl+Alt+Return    spawn "${TERMINAL:-xterm}"
+_bind Super+Return       spawn xterm -e "$HOME/scripts/remaps"
 _bind Super+Delete       spawn xterm -e "$HOME/scripts/tms" #TMUX
 _bind $Hyper+BackSpace   spawn rofi -show window -modi window -show-icons
 _bind $Hyper+Scroll_Lock spawn slock
@@ -236,7 +239,7 @@ _bind Ctrl+Super+Pause       spawn pactl set-sink-mute   @DEFAULT_SINK@ toggle
 _bind Ctrl+Super+Scroll_Lock spawn pactl set-source-mute @DEFAULT_SINK@ toggle
 _bind $Hyper+Super+w         spawn firefox
 _bind $Hyper+Super+e         spawn emacs
-_bind $Hyper+Super+m         spawn pcmanfm
+_bind $Hyper+Super+m         spawn thunar
 _bind $Hyper+Super+r         spawn "$hc_dir/dmenu_run_hlwm"
 # }}}2
 
